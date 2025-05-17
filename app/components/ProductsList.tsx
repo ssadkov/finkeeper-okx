@@ -6,13 +6,13 @@ import { OkxProduct } from '../utils/okxApi';
 interface FormData {
     simplifyInvestType: string;
     network: string;
-    limit: string;
+    offset: string;
 }
 
 const defaultFormData: FormData = {
     simplifyInvestType: '100',
     network: 'ETH',
-    limit: '100'
+    offset: '0'
 };
 
 export default function ProductsList() {
@@ -127,16 +127,16 @@ export default function ProductsList() {
                     
                     <div>
                         <label className="block text-sm font-medium text-gray-700 mb-1">
-                            Limit
+                            Offset
                         </label>
                         <input
                             type="number"
-                            name="limit"
-                            value={formData.limit}
+                            name="offset"
+                            value={formData.offset}
                             onChange={handleInputChange}
                             className="w-full p-2 border rounded"
-                            min="1"
-                            max="100"
+                            min="0"
+                            step="10"
                         />
                     </div>
                 </div>
@@ -214,7 +214,7 @@ export default function ProductsList() {
   -d '{
     "simplifyInvestType": "${formData.simplifyInvestType}",
     "network": "${formData.network}",
-    "limit": "${formData.limit}",
+    "offset": "${formData.offset}",
     "sort": {
       "orders": [{
         "direction": "DESC",

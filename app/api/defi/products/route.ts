@@ -24,7 +24,7 @@ export async function GET(request: NextRequest) {
         const params = {
             simplifyInvestType: searchParams.get('simplifyInvestType') || '100',
             network: searchParams.get('network') || 'ETH',
-            limit: searchParams.get('limit') || '100',
+            offset: searchParams.get('offset') || '0',
             sort: {
                 orders: [{
                     direction: searchParams.get('sortDirection') as 'ASC' | 'DESC' || 'DESC',
@@ -71,9 +71,9 @@ export async function POST(request: NextRequest) {
         console.log('Received request body:', body);
         
         // Проверяем обязательные параметры
-        if (!body.simplifyInvestType || !body.network || !body.limit) {
+        if (!body.simplifyInvestType || !body.network) {
             return NextResponse.json(
-                { error: 'Missing required parameters: simplifyInvestType, network, limit' },
+                { error: 'Missing required parameters: simplifyInvestType, network' },
                 { 
                     status: 400,
                     headers: corsHeaders
@@ -81,8 +81,14 @@ export async function POST(request: NextRequest) {
             );
         }
 
+        // Устанавливаем значение по умолчанию для offset
+        const params = {
+            ...body,
+            offset: body.offset || '0'
+        };
+
         // Получаем данные от OKX API
-        const response = await getDefiProducts(body);
+        const response = await getDefiProducts(params);
         console.log('OKX API Response:', response);
 
         // Проверяем структуру ответа
