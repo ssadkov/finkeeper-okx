@@ -2,29 +2,35 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getDefiProducts } from '@/app/utils/okxApi';
 import { validateConfig, OKX_CONFIG } from '@/app/config/okx';
 
+// Функция для создания CORS заголовков
+const corsHeaders = {
+    'Access-Control-Allow-Origin': '*',
+    'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+    'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+};
+
+// Обработка OPTIONS запроса для CORS
+export async function OPTIONS() {
+    return NextResponse.json({}, { headers: corsHeaders });
+}
+
 export async function GET(request: NextRequest) {
     try {
         // Проверяем наличие необходимых переменных окружения
         validateConfig();
 
-        // Логируем конфигурацию (без секретных данных)
-        console.log('API Key:', OKX_CONFIG.API_KEY ? 'Present' : 'Missing');
-        console.log('Secret Key:', OKX_CONFIG.SECRET_KEY ? 'Present' : 'Missing');
-        console.log('Passphrase:', OKX_CONFIG.PASSPHRASE ? 'Present' : 'Missing');
-
         // Получаем параметры из URL
         const searchParams = request.nextUrl.searchParams;
         const params = {
-            network: searchParams.get('network') || undefined,
-            offset: searchParams.get('offset') || undefined,
-            limit: searchParams.get('limit') || undefined,
-            platformIds: searchParams.get('platformIds')?.split(',') || undefined,
-            sort: searchParams.get('sort') ? {
+            simplifyInvestType: searchParams.get('simplifyInvestType') || '100',
+            network: searchParams.get('network') || 'ETH',
+            limit: searchParams.get('limit') || '100',
+            sort: {
                 orders: [{
                     direction: searchParams.get('sortDirection') as 'ASC' | 'DESC' || 'DESC',
-                    property: searchParams.get('sort') || 'TVL'
+                    property: searchParams.get('sortBy') || 'RATE'
                 }]
-            } : undefined
+            }
         };
 
         console.log('Request params:', params);
@@ -38,17 +44,19 @@ export async function GET(request: NextRequest) {
             throw new Error('Invalid response format from OKX API');
         }
 
-        // Возвращаем ответ
-        return NextResponse.json(response);
+        // Возвращаем ответ с CORS заголовками
+        return NextResponse.json(response, { headers: corsHeaders });
     } catch (error) {
         console.error('Error fetching DeFi products:', error);
         
-        // Возвращаем ошибку
         return NextResponse.json(
             { 
                 error: error instanceof Error ? error.message : 'Unknown error occurred' 
             },
-            { status: 500 }
+            { 
+                status: 500,
+                headers: corsHeaders
+            }
         );
     }
 }
@@ -60,12 +68,16 @@ export async function POST(request: NextRequest) {
 
         // Получаем параметры из тела запроса
         const body = await request.json();
+        console.log('Received request body:', body);
         
         // Проверяем обязательные параметры
         if (!body.simplifyInvestType || !body.network || !body.limit) {
             return NextResponse.json(
                 { error: 'Missing required parameters: simplifyInvestType, network, limit' },
-                { status: 400 }
+                { 
+                    status: 400,
+                    headers: corsHeaders
+                }
             );
         }
 
@@ -78,17 +90,19 @@ export async function POST(request: NextRequest) {
             throw new Error('Invalid response format from OKX API');
         }
 
-        // Возвращаем ответ
-        return NextResponse.json(response);
+        // Возвращаем ответ с CORS заголовками
+        return NextResponse.json(response, { headers: corsHeaders });
     } catch (error) {
         console.error('Error fetching DeFi products:', error);
         
-        // Возвращаем ошибку
         return NextResponse.json(
             { 
                 error: error instanceof Error ? error.message : 'Unknown error occurred' 
             },
-            { status: 500 }
+            { 
+                status: 500,
+                headers: corsHeaders
+            }
         );
     }
 } 

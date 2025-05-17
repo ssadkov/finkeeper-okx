@@ -56,13 +56,29 @@ export const makeOkxRequest = async <T>(
     method: string = 'GET',
     params: OkxRequestParams = {}
 ): Promise<T> => {
-    const url = `${OKX_CONFIG.BASE_URL}${endpoint}`;
-    const body = method === 'POST' ? JSON.stringify(params) : '';
+    let url = `${OKX_CONFIG.BASE_URL}${endpoint}`;
     const timestamp = new Date().toISOString();
     
     console.log('Making request to:', url);
     console.log('Request method:', method);
     console.log('Request params:', params);
+    
+    let body = '';
+    if (method === 'POST') {
+        body = JSON.stringify(params);
+    } else {
+        // Для GET запросов добавляем параметры в URL
+        const queryParams = new URLSearchParams();
+        Object.entries(params).forEach(([key, value]) => {
+            if (value !== undefined) {
+                queryParams.append(key, value.toString());
+            }
+        });
+        const queryString = queryParams.toString();
+        if (queryString) {
+            url += `?${queryString}`;
+        }
+    }
     
     const headers = createHeaders(timestamp, method, endpoint, body);
     
@@ -79,6 +95,7 @@ export const makeOkxRequest = async <T>(
     }
 
     const data = await response.json();
+    console.log('API Response data:', data);
     return data as T;
 };
 
@@ -113,6 +130,7 @@ export interface OkxProductsResponse {
 // Функция для получения списка продуктов
 export const getDefiProducts = async (
     params: {
+        simplifyInvestType?: string;
         network?: string;
         offset?: string;
         limit?: string;
@@ -125,9 +143,22 @@ export const getDefiProducts = async (
         platformIds?: string[];
     } = {}
 ): Promise<OkxProductsResponse> => {
-    return makeOkxRequest<OkxProductsResponse>(
+    console.log('getDefiProducts params:', params);
+    
+    // Убеждаемся, что все параметры передаются как строки
+    const formattedParams = {
+        ...params,
+        limit: params.limit?.toString(),
+        offset: params.offset?.toString(),
+        simplifyInvestType: params.simplifyInvestType?.toString()
+    };
+    
+    const response = await makeOkxRequest<OkxProductsResponse>(
         OKX_CONFIG.ENDPOINTS.DEFI_PRODUCTS,
         'POST',
-        params
+        formattedParams
     );
+    
+    console.log('getDefiProducts response:', response);
+    return response;
 }; 
