@@ -14,6 +14,51 @@ export async function OPTIONS() {
     return NextResponse.json({}, { headers: corsHeaders });
 }
 
+// Получение детальной информации по протоколу
+export async function GET(request: NextRequest) {
+    try {
+        validateConfig();
+        
+        const searchParams = request.nextUrl.searchParams;
+        const platformId = searchParams.get('platformId');
+        const chainId = searchParams.get('chainId');
+        const walletAddress = searchParams.get('walletAddress');
+
+        if (!platformId || !chainId || !walletAddress) {
+            return NextResponse.json(
+                { error: 'Missing required parameters: platformId, chainId, walletAddress' },
+                { status: 400, headers: corsHeaders }
+            );
+        }
+
+        const response = await makeOkxRequest(
+            '/api/v5/defi/user/asset/platform/detail',
+            'POST',
+            {
+                analysisPlatformId: platformId,
+                accountIdInfoList: [{
+                    walletAddressList: [{
+                        chainId: parseInt(chainId),
+                        walletAddress: walletAddress
+                    }]
+                }]
+            }
+        ) as { data?: { walletIdPlatformDetailList?: any[] } };
+
+        if (!response.data || !Array.isArray(response.data.walletIdPlatformDetailList)) {
+            throw new Error('Invalid response format from OKX API');
+        }
+
+        return NextResponse.json(response, { headers: corsHeaders });
+    } catch (error) {
+        console.error('Error fetching platform details:', error);
+        return NextResponse.json(
+            { error: error instanceof Error ? error.message : 'Unknown error occurred' },
+            { status: 500, headers: corsHeaders }
+        );
+    }
+}
+
 export async function POST(request: NextRequest) {
     try {
         // Проверяем наличие необходимых переменных окружения
