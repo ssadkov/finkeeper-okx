@@ -38,6 +38,7 @@ interface Platform {
   analysisPlatformId: string;
   platformName: string;
   platformLogo: string;
+  platformUrl: string;
   currencyAmount: string;
   investmentCount: number;
   networkBalanceVoList: Array<{
@@ -266,140 +267,175 @@ export default function Sidebar() {
   })).filter(wallet => wallet.platformList && wallet.platformList.length > 0);
 
   return (
-    <div className="w-64 bg-white h-screen shadow-lg p-4">
-      <h2 className="text-lg font-semibold mb-4">Wallet Overview</h2>
-      <div className="space-y-4">
-        <div className="bg-gray-50 p-4 rounded-lg">
-          <h3 className="text-sm text-gray-600 mb-1">Total Value</h3>
-          {loading ? (
-            <p className="text-gray-500">Loading...</p>
-          ) : error ? (
-            <p className="text-red-500">{error}</p>
-          ) : (
-            <p className="text-xl font-bold">${Number(totalValue).toFixed(2)}</p>
-          )}
-        </div>
+    <div className="w-80 bg-white h-screen shadow-lg p-4 flex flex-col">
+      <div className="flex-grow">
+        <h2 className="text-lg font-semibold mb-4">Wallet Overview</h2>
+        <div className="space-y-4">
+          <div className="bg-gray-50 p-4 rounded-lg">
+            <h3 className="text-sm text-gray-600 mb-1">Total Value</h3>
+            {loading ? (
+              <p className="text-gray-500">Loading...</p>
+            ) : error ? (
+              <p className="text-red-500">{error}</p>
+            ) : (
+              <p className="text-xl font-bold">${Number(totalValue).toFixed(2)}</p>
+            )}
+          </div>
 
-        <div className="flex items-center justify-between mb-2">
-          <label className="flex items-center space-x-2 text-sm text-gray-600">
-            <input
-              type="checkbox"
-              checked={hideSmallAssets}
-              onChange={(e) => setHideSmallAssets(e.target.checked)}
-              className="form-checkbox h-4 w-4 text-blue-600 rounded"
-            />
-            <span>Hide &lt;$1</span>
-          </label>
-        </div>
+          <div className="flex items-center justify-between mb-2">
+            <label className="flex items-center space-x-2 text-sm text-gray-600">
+              <input
+                type="checkbox"
+                checked={hideSmallAssets}
+                onChange={(e) => setHideSmallAssets(e.target.checked)}
+                className="form-checkbox h-4 w-4 text-blue-600 rounded"
+              />
+              <span>Hide &lt;$1</span>
+            </label>
+          </div>
 
-        <div className="bg-gray-50 rounded-lg overflow-hidden">
-          <button
-            onClick={() => setIsExpanded(!isExpanded)}
-            className="w-full p-4 flex items-center justify-between hover:bg-gray-100 transition-colors"
-          >
-            <div className="flex items-center space-x-2">
-              <span className="text-sm font-medium">Wallet</span>
-              {!loading && !error && (
-                <span className="text-sm text-gray-500">
-                  ${totalTokensValue.toFixed(2)}
-                </span>
-              )}
-            </div>
-            <svg
-              className={`w-4 h-4 transform transition-transform ${isExpanded ? 'rotate-180' : ''}`}
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
+          <div className="bg-gray-50 rounded-lg overflow-hidden">
+            <button
+              onClick={() => setIsExpanded(!isExpanded)}
+              className="w-full p-4 flex items-center justify-between hover:bg-gray-100 transition-colors"
             >
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-            </svg>
-          </button>
+              <div className="flex items-center space-x-2">
+                <span className="text-sm font-medium">Wallet</span>
+                {!loading && !error && (
+                  <span className="text-sm text-gray-500">
+                    ${totalTokensValue.toFixed(2)}
+                  </span>
+                )}
+              </div>
+              <svg
+                className={`w-4 h-4 transform transition-transform ${isExpanded ? 'rotate-180' : ''}`}
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+              </svg>
+            </button>
 
-          {isExpanded && (
-            <div className="p-4 pt-0">
-              {loading ? (
-                <p className="text-gray-500">Loading...</p>
-              ) : error ? (
-                <p className="text-red-500">{error}</p>
-              ) : sortedAndFilteredBalances.length === 0 ? (
-                <p className="text-gray-500">No tokens found</p>
-              ) : (
-                <div className="space-y-2">
-                  {sortedAndFilteredBalances.map((token) => {
-                    const value = Number(token.balance) * Number(token.tokenPrice);
-                    return (
-                      <div key={token.tokenAddress} className="flex items-center justify-between">
-                        <div>
-                          <p className="text-sm font-medium">{token.symbol}</p>
-                        </div>
-                        <div className="text-right">
-                          <p className="text-sm font-medium">{Number(token.balance).toFixed(4)}</p>
-                          <p className="text-xs text-gray-500">${value.toFixed(2)}</p>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
-              {hideSmallAssets && totalTokensValue > filteredTokensValue && (
-                <p className="text-xs text-gray-500 mt-2">
-                  Hidden: ${(totalTokensValue - filteredTokensValue).toFixed(2)}
-                </p>
-              )}
-            </div>
-          )}
-        </div>
-
-        <div className="space-y-2">
-          <h3 className="text-sm font-medium text-gray-600">User Positions</h3>
-          {filteredPositions.length === 0 ? (
-            <p className="text-sm text-gray-500">No open positions</p>
-          ) : (
-            filteredPositions.map((wallet) => (
-              wallet.platformList?.map((platform) => (
-                <div key={platform.analysisPlatformId} className="bg-gray-50 p-3 rounded-lg">
-                  <div className="flex justify-between items-start mb-2">
-                    <div className="flex items-center space-x-2">
-                      {platform.platformLogo && (
-                        <img 
-                          src={platform.platformLogo} 
-                          alt={platform.platformName}
-                          className="w-4 h-4"
-                        />
-                      )}
-                      <div>
-                        <p className="text-sm font-medium">{platform.platformName}</p>
-                        <p className="text-xs text-gray-500">
-                          {platform.investmentCount} position{platform.investmentCount !== 1 ? 's' : ''}
-                        </p>
-                      </div>
-                    </div>
-                    <div className="text-right">
-                      <p className="text-sm font-medium">${Number(platform.currencyAmount).toFixed(2)}</p>
-                      <div className="flex items-center space-x-1">
-                        {platform.networkBalanceVoList.map((network) => (
-                          <div key={network.chainId} className="flex items-center">
-                            {network.networkLogo && (
-                              <img 
-                                src={network.networkLogo} 
-                                alt={network.network}
-                                className="w-3 h-3"
-                              />
-                            )}
+            {isExpanded && (
+              <div className="p-4 pt-0">
+                {loading ? (
+                  <p className="text-gray-500">Loading...</p>
+                ) : error ? (
+                  <p className="text-red-500">{error}</p>
+                ) : sortedAndFilteredBalances.length === 0 ? (
+                  <p className="text-gray-500">No tokens found</p>
+                ) : (
+                  <div className="space-y-2">
+                    {sortedAndFilteredBalances.map((token) => {
+                      const value = Number(token.balance) * Number(token.tokenPrice);
+                      return (
+                        <div key={token.tokenAddress} className="flex items-center justify-between">
+                          <div>
+                            <p className="text-sm font-medium">{token.symbol}</p>
                           </div>
-                        ))}
+                          <div className="text-right">
+                            <p className="text-sm font-medium">{Number(token.balance).toFixed(4)}</p>
+                            <p className="text-xs text-gray-500">${value.toFixed(2)}</p>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+                {hideSmallAssets && totalTokensValue > filteredTokensValue && (
+                  <p className="text-xs text-gray-500 mt-2">
+                    Hidden: ${(totalTokensValue - filteredTokensValue).toFixed(2)}
+                  </p>
+                )}
+              </div>
+            )}
+          </div>
+
+          <div className="space-y-2">
+            <h3 className="text-sm font-medium text-gray-600">User Positions</h3>
+            {filteredPositions.length === 0 ? (
+              <p className="text-sm text-gray-500">No open positions</p>
+            ) : (
+              filteredPositions.map((wallet) => (
+                wallet.platformList?.map((platform) => (
+                  <div key={platform.analysisPlatformId} className="bg-gray-50 p-3 rounded-lg">
+                    <div className="flex justify-between items-start mb-2">
+                      <div className="flex items-center space-x-2">
+                        {platform.platformLogo && (
+                          <img 
+                            src={platform.platformLogo} 
+                            alt={platform.platformName}
+                            className="w-4 h-4"
+                          />
+                        )}
+                        <div>
+                          <a 
+                            href={platform.platformUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-sm font-medium text-blue-600 hover:text-blue-800 hover:underline"
+                          >
+                            {platform.platformName}
+                          </a>
+                          <p className="text-xs text-gray-500">
+                            {platform.investmentCount} position{platform.investmentCount !== 1 ? 's' : ''}
+                          </p>
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-sm font-medium">${Number(platform.currencyAmount).toFixed(2)}</p>
+                        <div className="flex items-center space-x-1">
+                          {platform.networkBalanceVoList.map((network) => (
+                            <div key={network.chainId} className="flex items-center">
+                              {network.networkLogo && (
+                                <img 
+                                  src={network.networkLogo} 
+                                  alt={network.network}
+                                  className="w-3 h-3"
+                                />
+                              )}
+                            </div>
+                          ))}
+                        </div>
                       </div>
                     </div>
                   </div>
-                </div>
+                ))
               ))
-            ))
-          )}
-          {hideSmallAssets && positions.length > filteredPositions.length && (
-            <p className="text-xs text-gray-500 mt-2">
-              Hidden positions: {positions.length - filteredPositions.length}
-            </p>
-          )}
+            )}
+            {hideSmallAssets && positions.length > filteredPositions.length && (
+              <p className="text-xs text-gray-500 mt-2">
+                Hidden positions: {positions.length - filteredPositions.length}
+              </p>
+            )}
+          </div>
+        </div>
+      </div>
+
+      <div className="mt-auto pt-4 border-t border-gray-200">
+        <h3 className="text-sm font-medium text-gray-600 mb-2">Tools</h3>
+        <div className="space-y-2">
+          <div className="grid grid-cols-2 gap-2">
+            <a 
+              href="/defi" 
+              className="flex items-center space-x-2 text-sm text-blue-600 hover:text-blue-800 hover:underline p-2 rounded hover:bg-gray-50"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+              </svg>
+              <span>DeFi Protocols</span>
+            </a>
+            <a 
+              href="/positions" 
+              className="flex items-center space-x-2 text-sm text-blue-600 hover:text-blue-800 hover:underline p-2 rounded hover:bg-gray-50"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+              </svg>
+              <span>User Positions</span>
+            </a>
+          </div>
         </div>
       </div>
     </div>
