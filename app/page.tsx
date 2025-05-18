@@ -1,12 +1,9 @@
 import Link from 'next/link';
-import SolanaWalletConnect from './components/SolanaWalletConnect';
 
 export default function Home() {
     return (
         <div className="min-h-screen flex flex-col">
             <main className="flex-grow flex flex-col items-center justify-center p-4">
-                <h1 className="text-4xl font-bold mb-8">Harvester OKX</h1>
-                
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-4xl w-full">
                     <Link 
                         href="/products" 
@@ -23,10 +20,6 @@ export default function Home() {
                         <h2 className="text-2xl font-semibold mb-2">User Positions</h2>
                         <p className="text-gray-600">Check your positions across different protocols</p>
                     </Link>
-                </div>
-
-                <div className="z-10 max-w-5xl w-full items-center justify-between font-mono text-sm">
-                    <SolanaWalletConnect />
                 </div>
             </main>
         </div>

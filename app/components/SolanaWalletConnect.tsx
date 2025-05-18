@@ -95,45 +95,36 @@ export default function SolanaWalletConnect() {
     }
 
     return (
-        <div className="flex flex-col items-center gap-4 p-4">
-            {error && (
-                <div className="text-red-500 text-sm">
-                    {error}
-                </div>
-            )}
-            
-            {!publicKey && (
-                <div className="flex flex-col gap-2">
-                    <select
-                        value={selectedProvider || ''}
-                        onChange={(e) => setSelectedProvider(e.target.value as WalletProvider)}
-                        className="px-3 py-2 border rounded-md text-sm"
-                    >
-                        {availableProviders.map((provider) => (
-                            <option key={provider} value={provider}>
-                                {provider.charAt(0).toUpperCase() + provider.slice(1)}
-                            </option>
-                        ))}
-                    </select>
-                    <button
-                        onClick={handleConnect}
-                        className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 transition-colors"
-                    >
-                        Connect {selectedProvider?.charAt(0).toUpperCase() + selectedProvider?.slice(1)} Wallet
-                    </button>
-                </div>
-            )}
-            
-            {publicKey && (
-                <div className="flex flex-col items-center gap-2">
+        <div className="flex items-center gap-2">
+            <select
+                value={selectedProvider || ''}
+                onChange={(e) => setSelectedProvider(e.target.value as WalletProvider)}
+                className="px-3 py-2 border rounded-md text-sm"
+            >
+                {availableProviders.map((provider) => (
+                    <option key={provider} value={provider}>
+                        {provider.charAt(0).toUpperCase() + provider.slice(1)}
+                    </option>
+                ))}
+            </select>
+
+            {!publicKey ? (
+                <button
+                    onClick={handleConnect}
+                    className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 transition-colors"
+                >
+                    Connect Wallet
+                </button>
+            ) : (
+                <div className="flex items-center gap-2">
                     <div className="text-sm">
-                        Connected: {publicKey.toString().slice(0, 4)}...{publicKey.toString().slice(-4)}
+                        {publicKey.toString().slice(0, 4)}...{publicKey.toString().slice(-4)}
                     </div>
                     <button
                         onClick={handleDisconnect}
                         className="px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600 transition-colors"
                     >
-                        Disconnect Wallet
+                        Disconnect
                     </button>
                 </div>
             )}
