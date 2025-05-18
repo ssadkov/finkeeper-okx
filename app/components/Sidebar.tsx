@@ -268,7 +268,7 @@ export default function Sidebar() {
 
   return (
     <div className="w-80 bg-white h-screen shadow-lg p-4 flex flex-col">
-      <div className="flex-grow">
+      <div className="flex-grow overflow-y-auto pr-2">
         <h2 className="text-lg font-semibold mb-4">Wallet Overview</h2>
         <div className="space-y-4">
           <div className="bg-gray-50 p-4 rounded-lg">
@@ -412,8 +412,7 @@ export default function Sidebar() {
           </div>
         </div>
       </div>
-
-      <div className="mt-auto pt-4 border-t border-gray-200">
+      <div className="pt-4 border-t border-gray-200 mt-4">
         <h3 className="text-sm font-medium text-gray-600 mb-2">Tools</h3>
         <div className="space-y-2">
           <div className="grid grid-cols-2 gap-2">
