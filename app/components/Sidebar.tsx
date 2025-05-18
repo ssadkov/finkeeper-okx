@@ -53,10 +53,13 @@ interface Position {
 }
 
 interface PositionsResponse {
-  code: string;
+  code: number;
   msg: string;
+  error_code: string;
+  error_message: string;
+  detailMsg: string;
   data: {
-    walletIdPlatformList: Position[];
+    walletIdPlatformList?: Position[];
   };
 }
 
@@ -173,36 +176,57 @@ export default function Sidebar() {
   // Эффект для получения позиций
   useEffect(() => {
     const fetchPositions = async () => {
-      if (!publicKey) return;
+      if (!publicKey) {
+        console.log('No public key available for positions');
+        return;
+      }
 
       try {
+        console.log('Fetching positions for address:', publicKey.toString());
+        
+        const requestBody = {
+          walletAddressList: [{
+            chainId: 501, // Solana
+            walletAddress: publicKey.toString()
+          }]
+        };
+        console.log('Positions request body:', requestBody);
+
         const response = await fetch('/api/defi/positions', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
           },
-          body: JSON.stringify({
-            walletAddressList: [{
-              chainId: 501, // Solana
-              walletAddress: publicKey.toString()
-            }]
-          })
+          body: JSON.stringify(requestBody)
         });
 
+        console.log('Positions response status:', response.status);
         const data: PositionsResponse = await response.json();
         console.log('Positions Response:', data);
 
-        if (data.code === '0' && data.data.walletIdPlatformList) {
+        if (data.code === 0 && data.data?.walletIdPlatformList) {
+          console.log('Raw positions data:', data.data.walletIdPlatformList);
           // Фильтруем только те записи, у которых есть platformList
           const validPositions = data.data.walletIdPlatformList.filter(
             (wallet) => Array.isArray(wallet.platformList) && wallet.platformList.length > 0
           );
+          console.log('Filtered positions:', validPositions);
           setPositions(validPositions);
         } else {
-          console.error('Positions API Error:', data.msg);
+          console.error('Positions API Error:', {
+            code: data.code,
+            msg: data.msg,
+            error_code: data.error_code,
+            error_message: data.error_message,
+            detailMsg: data.detailMsg,
+            data: data.data
+          });
         }
       } catch (err) {
         console.error('Positions Fetch Error:', err);
+        if (err instanceof Error) {
+          console.error('Error details:', err.message);
+        }
       }
     };
 
@@ -222,10 +246,24 @@ export default function Sidebar() {
       return valueB - valueA;
     });
 
-  // Подсчет общей стоимости токенов
-  const totalTokensValue = sortedAndFilteredBalances.reduce((sum, token) => {
+  // Подсчет общей стоимости всех токенов (без фильтра)
+  const totalTokensValue = balances.reduce((sum, token) => {
     return sum + (Number(token.balance) * Number(token.tokenPrice));
   }, 0);
+
+  // Подсчет стоимости отфильтрованных токенов
+  const filteredTokensValue = sortedAndFilteredBalances.reduce((sum, token) => {
+    return sum + (Number(token.balance) * Number(token.tokenPrice));
+  }, 0);
+
+  // Фильтрация позиций
+  const filteredPositions = positions.map(wallet => ({
+    ...wallet,
+    platformList: wallet.platformList?.filter(platform => {
+      if (!hideSmallAssets) return true;
+      return Number(platform.currencyAmount) >= 1;
+    })
+  })).filter(wallet => wallet.platformList && wallet.platformList.length > 0);
 
   return (
     <div className="w-64 bg-white h-screen shadow-lg p-4">
@@ -240,6 +278,18 @@ export default function Sidebar() {
           ) : (
             <p className="text-xl font-bold">${Number(totalValue).toFixed(2)}</p>
           )}
+        </div>
+
+        <div className="flex items-center justify-between mb-2">
+          <label className="flex items-center space-x-2 text-sm text-gray-600">
+            <input
+              type="checkbox"
+              checked={hideSmallAssets}
+              onChange={(e) => setHideSmallAssets(e.target.checked)}
+              className="form-checkbox h-4 w-4 text-blue-600 rounded"
+            />
+            <span>Hide &lt;$1</span>
+          </label>
         </div>
 
         <div className="bg-gray-50 rounded-lg overflow-hidden">
@@ -267,17 +317,6 @@ export default function Sidebar() {
 
           {isExpanded && (
             <div className="p-4 pt-0">
-              <div className="flex items-center justify-between mb-2">
-                <label className="flex items-center space-x-2 text-sm text-gray-600">
-                  <input
-                    type="checkbox"
-                    checked={hideSmallAssets}
-                    onChange={(e) => setHideSmallAssets(e.target.checked)}
-                    className="form-checkbox h-4 w-4 text-blue-600 rounded"
-                  />
-                  <span>Hide &lt;$1</span>
-                </label>
-              </div>
               {loading ? (
                 <p className="text-gray-500">Loading...</p>
               ) : error ? (
@@ -302,16 +341,21 @@ export default function Sidebar() {
                   })}
                 </div>
               )}
+              {hideSmallAssets && totalTokensValue > filteredTokensValue && (
+                <p className="text-xs text-gray-500 mt-2">
+                  Hidden: ${(totalTokensValue - filteredTokensValue).toFixed(2)}
+                </p>
+              )}
             </div>
           )}
         </div>
 
         <div className="space-y-2">
           <h3 className="text-sm font-medium text-gray-600">User Positions</h3>
-          {positions.length === 0 ? (
+          {filteredPositions.length === 0 ? (
             <p className="text-sm text-gray-500">No open positions</p>
           ) : (
-            positions.map((wallet) => (
+            filteredPositions.map((wallet) => (
               wallet.platformList?.map((platform) => (
                 <div key={platform.analysisPlatformId} className="bg-gray-50 p-3 rounded-lg">
                   <div className="flex justify-between items-start mb-2">
@@ -350,6 +394,11 @@ export default function Sidebar() {
                 </div>
               ))
             ))
+          )}
+          {hideSmallAssets && positions.length > filteredPositions.length && (
+            <p className="text-xs text-gray-500 mt-2">
+              Hidden positions: {positions.length - filteredPositions.length}
+            </p>
           )}
         </div>
       </div>
