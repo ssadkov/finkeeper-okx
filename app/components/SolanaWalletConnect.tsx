@@ -10,19 +10,69 @@ import {
     getAvailableProviders,
     type WalletProvider
 } from '../utils/solanaWallet';
+import { useWalletContext } from '../context/WalletContext';
+
+const STORAGE_KEY = 'solana_wallet_state';
+
+interface StoredWalletState {
+    provider: WalletProvider;
+    publicKey: string;
+}
 
 export default function SolanaWalletConnect() {
-    const [publicKey, setPublicKey] = useState<PublicKey | null>(null);
+    const { publicKey, setPublicKey } = useWalletContext();
     const [error, setError] = useState<string | null>(null);
     const [availableProviders, setAvailableProviders] = useState<WalletProvider[]>([]);
     const [selectedProvider, setSelectedProvider] = useState<WalletProvider | null>(null);
+
+    // Загрузка сохраненного состояния при монтировании
+    useEffect(() => {
+        const storedState = localStorage.getItem(STORAGE_KEY);
+        if (storedState) {
+            try {
+                const { provider, publicKey: storedPublicKey } = JSON.parse(storedState) as StoredWalletState;
+                setSelectedProvider(provider);
+                setPublicKey(new PublicKey(storedPublicKey));
+            } catch (err) {
+                console.error('Error loading stored wallet state:', err);
+                localStorage.removeItem(STORAGE_KEY);
+            }
+        }
+    }, [setPublicKey]);
+
+    // Сохранение состояния при изменении
+    useEffect(() => {
+        if (publicKey && selectedProvider) {
+            const state: StoredWalletState = {
+                provider: selectedProvider,
+                publicKey: publicKey.toString()
+            };
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+        } else {
+            localStorage.removeItem(STORAGE_KEY);
+        }
+    }, [publicKey, selectedProvider]);
 
     useEffect(() => {
         // Проверяем доступные провайдеры при загрузке
         const providers = getAvailableProviders();
         setAvailableProviders(providers);
         
-        // Если есть OKX, выбираем его по умолчанию
+        // Если есть сохраненный провайдер и он доступен, используем его
+        const storedState = localStorage.getItem(STORAGE_KEY);
+        if (storedState) {
+            try {
+                const { provider } = JSON.parse(storedState) as StoredWalletState;
+                if (providers.includes(provider)) {
+                    setSelectedProvider(provider);
+                    return;
+                }
+            } catch (err) {
+                console.error('Error loading stored provider:', err);
+            }
+        }
+        
+        // Иначе выбираем OKX по умолчанию или первый доступный
         if (providers.includes('okx')) {
             setSelectedProvider('okx');
         } else if (providers.length > 0) {
@@ -40,10 +90,14 @@ export default function SolanaWalletConnect() {
 
         const handleDisconnect = () => {
             setPublicKey(null);
+            localStorage.removeItem(STORAGE_KEY);
         };
 
         const handleAccountChanged = (publicKey: PublicKey | null) => {
             setPublicKey(publicKey);
+            if (!publicKey) {
+                localStorage.removeItem(STORAGE_KEY);
+            }
         };
 
         // Добавляем слушатели событий
@@ -57,7 +111,7 @@ export default function SolanaWalletConnect() {
             removeSolanaWalletListener(selectedProvider, 'disconnect', handleDisconnect);
             removeSolanaWalletListener(selectedProvider, 'accountChanged', handleAccountChanged);
         };
-    }, [selectedProvider]);
+    }, [selectedProvider, setPublicKey]);
 
     const handleConnect = async () => {
         if (!selectedProvider) {
@@ -81,6 +135,7 @@ export default function SolanaWalletConnect() {
             setError(null);
             await disconnectSolanaWallet(selectedProvider);
             setPublicKey(null);
+            localStorage.removeItem(STORAGE_KEY);
         } catch (err) {
             setError(err instanceof Error ? err.message : 'Failed to disconnect wallet');
         }
