@@ -46,7 +46,7 @@ export default function Chat() {
                   }
                   if (part.toolInvocation?.toolName === 'viewPoolsTool') {
                     console.log('Rendering PoolsView from tool invocation');
-                    return <PoolsView key={i} />;
+                    return <PoolsView key={i} {...(part.toolInvocation?.result?.props || {})} />;
                   }
                 }
                 if (part.type === 'ui') {
@@ -54,10 +54,6 @@ export default function Chat() {
                   if (part.component === 'WalletView') {
                     console.log('Rendering WalletView with props:', part.props);
                     return <WalletView key={i} message={part.props?.message || 'Wallet information'} />;
-                  }
-                  if (part.component === 'PoolsView') {
-                    console.log('Rendering PoolsView with props:', part.props);
-                    return <PoolsView key={i} />;
                   }
                 }
                 console.log('No matching renderer for part:', JSON.stringify(part, null, 2));
