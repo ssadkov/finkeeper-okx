@@ -12,7 +12,7 @@ interface ProcessedPool {
 export const viewPoolsTool = tool({
   description: 'Show lending pools for the specified token and type (stable or all)',
   parameters: z.object({
-    token: z.string().describe('Token to search pools for (e.g., usdc, btc, sol)'),
+    token: z.string().describe('Category of tokens for fetching pools: stable or all'),
     type: z.enum(['stable', 'all']).describe('Pool type: stable (usd) or all tokens'),
   }),
   async execute({ token, type }) {
