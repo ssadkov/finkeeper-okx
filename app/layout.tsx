@@ -16,8 +16,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Harvester OKX (Solana edition)",
-  description: "Harvester OKX - Solana DeFi Protocol Explorer",
+  title: "FinKeeper OKX (Solana edition)",
+  description: "FinKeeper OKX - Solana DeFi Protocol Explorer",
 };
 
 export default function RootLayout({
@@ -34,8 +34,8 @@ export default function RootLayout({
         <WalletProvider>
           <div className="h-screen flex flex-col bg-gray-50">
             <header className="bg-white shadow-sm">
-              <div className="max-w-7xl mx-auto px-4 py-4 flex justify-between items-center">
-                <h1 className="text-xl font-bold">Harvester OKX</h1>
+              <div className="pl-4 pr-4 py-4 flex justify-between items-center">
+                <h1 className="text-xl font-bold">FinKeeper OKX</h1>
                 <SolanaWalletConnect />
               </div>
             </header>
