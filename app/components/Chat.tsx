@@ -26,7 +26,7 @@ export default function Chat() {
   console.log('Chat messages:', JSON.stringify(messages, null, 2));
 
   return (
-    <div className="flex flex-col h-[calc(100vh-12rem)] w-full max-w-2xl mx-auto bg-white rounded-lg shadow p-4">
+    <div className="flex flex-col h-[calc(100vh-12rem)] w-full max-w-4xl mx-auto bg-white rounded-lg shadow p-4 mt-16">
       <div className="flex-grow overflow-y-auto mb-4 space-y-4">
         {messages.map((message: Message, idx) => {
           console.log('Processing message:', JSON.stringify(message, null, 2));

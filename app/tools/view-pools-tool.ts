@@ -62,9 +62,7 @@ export const viewPoolsTool = tool({
         type: 'ui',
         component: 'PoolsView',
         props: {
-          message: processedPools.length
-            ? `Found pools: ${processedPools.length}`
-            : 'No pools found',
+          message: `Found pools with best APR`,
           pools: processedPools
         }
       };

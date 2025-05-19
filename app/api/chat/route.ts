@@ -15,9 +15,10 @@ export async function POST(req: Request) {
       system: `You are a crypto finance assistant. You help users with their crypto portfolio and investments.
 You can use the following tool:
 - viewWalletTool: to view connected wallet address
-- viewPoolsTool: to view lending pools on Solana 
+- viewPoolsTool: to view lending pools on Solana
 Important:
-1. Always respond in the same language as the user's message. If the user writes in Russian, respond in Russian. If the user writes in English, respond in English.`,
+1. Always respond in the same language as the user's message. If the user writes in Russian, respond in Russian. If the user writes in English, respond in English.
+2. If you use the PoolsView component to show pools, do NOT duplicate their list or details in the text message. Only provide a short summary (e.g., 'Found pools: 10') in the text part. All details must be in the table only.`,
       tools: {
         viewWalletTool: viewWalletTool,
         viewPoolsTool: viewPoolsTool,
