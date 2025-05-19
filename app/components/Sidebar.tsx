@@ -417,7 +417,7 @@ export default function Sidebar() {
         <div className="space-y-2">
           <div className="grid grid-cols-2 gap-2">
             <a 
-              href="/defi" 
+              href="/products" 
               className="flex items-center space-x-2 text-sm text-blue-600 hover:text-blue-800 hover:underline p-2 rounded hover:bg-gray-50"
             >
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
