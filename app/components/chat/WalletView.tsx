@@ -21,7 +21,7 @@ export function WalletView({ message }: WalletViewProps) {
       <div className="p-4 bg-yellow-50 dark:bg-yellow-900/20 rounded-lg">
         <div className="flex items-center gap-2 text-yellow-800 dark:text-yellow-200">
           <Wallet className="h-4 w-4" />
-          <span>Кошелек не подключен</span>
+          <span>Wallet not connected</span>
         </div>
       </div>
     );
@@ -36,7 +36,7 @@ export function WalletView({ message }: WalletViewProps) {
         <span className="text-sm font-medium text-zinc-700 dark:text-zinc-300">{message}</span>
       </div>
       <div className="mt-2">
-        <div className="text-sm text-zinc-500 dark:text-zinc-400">Адрес кошелька:</div>
+        <div className="text-sm text-zinc-500 dark:text-zinc-400">Wallet address:</div>
         <div className="mt-1 flex items-center gap-2">
           <div className="flex-1 font-mono text-sm bg-zinc-100 dark:bg-zinc-800 p-2 rounded break-all">
             {address}
@@ -44,13 +44,13 @@ export function WalletView({ message }: WalletViewProps) {
           <button
             onClick={copyToClipboard}
             className="h-8 w-8 bg-transparent hover:bg-zinc-200 rounded"
-            title="Копировать адрес"
+            title="Copy address"
           >
             <Copy className="h-4 w-4" />
           </button>
         </div>
         <div className="mt-2 text-xs text-zinc-500 dark:text-zinc-400">
-          Это публичный адрес, на него вы можете получать средства на блокчейне Solana
+          This is a public address where you can receive funds on the Solana blockchain
         </div>
       </div>
     </div>

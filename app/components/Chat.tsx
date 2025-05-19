@@ -39,11 +39,11 @@ export default function Chat() {
                 }
                 if (part.type === 'tool-invocation' && part.toolInvocation?.toolName === 'viewWallet') {
                   console.log('Rendering WalletView from tool invocation');
-                  return <WalletView key={i} message="Информация о кошельке" />;
+                  return <WalletView key={i} message="Wallet information" />;
                 }
                 if (part.type === 'ui' && part.component === 'WalletView') {
                   console.log('Rendering WalletView with props:', part.props);
-                  return <WalletView key={i} message={part.props?.message || 'Информация о кошельке'} />;
+                  return <WalletView key={i} message={part.props?.message || 'Wallet information'} />;
                 }
                 return null;
               })}
