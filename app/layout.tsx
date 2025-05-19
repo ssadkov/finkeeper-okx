@@ -32,16 +32,16 @@ export default function RootLayout({
         suppressHydrationWarning
       >
         <WalletProvider>
-          <div className="min-h-screen bg-gray-50">
+          <div className="h-screen flex flex-col bg-gray-50">
             <header className="bg-white shadow-sm">
               <div className="max-w-7xl mx-auto px-4 py-4 flex justify-between items-center">
                 <h1 className="text-xl font-bold">Harvester OKX</h1>
                 <SolanaWalletConnect />
               </div>
             </header>
-            <div className="flex">
+            <div className="flex-1 flex overflow-hidden">
               <Sidebar />
-              <main className="flex-1 p-4">
+              <main className="flex-1 p-4 overflow-y-auto">
                 {children}
               </main>
             </div>

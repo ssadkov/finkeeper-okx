@@ -267,11 +267,11 @@ export default function Sidebar() {
   })).filter(wallet => wallet.platformList && wallet.platformList.length > 0);
 
   return (
-    <div className="w-80 bg-white h-screen shadow-lg p-4 flex flex-col">
+    <div className="w-80 bg-white shadow-lg p-4 flex flex-col h-full">
       <div className="flex-grow overflow-y-auto pr-2">
-        <h2 className="text-lg font-semibold mb-4">Wallet Overview</h2>
-        <div className="space-y-4">
-          <div className="bg-gray-50 p-4 rounded-lg">
+        <h2 className="text-lg font-semibold mb-2">Wallet Overview</h2>
+        <div className="space-y-2">
+          <div className="bg-gray-50 p-3 rounded-lg">
             <h3 className="text-sm text-gray-600 mb-1">Total Value</h3>
             {loading ? (
               <p className="text-gray-500">Loading...</p>
@@ -282,7 +282,7 @@ export default function Sidebar() {
             )}
           </div>
 
-          <div className="flex items-center justify-between mb-2">
+          <div className="flex items-center justify-between mb-1">
             <label className="flex items-center space-x-2 text-sm text-gray-600">
               <input
                 type="checkbox"
@@ -294,10 +294,10 @@ export default function Sidebar() {
             </label>
           </div>
 
-          <div className="bg-gray-50 rounded-lg overflow-hidden">
+          <div className="space-y-1">
             <button
               onClick={() => setIsExpanded(!isExpanded)}
-              className="w-full p-4 flex items-center justify-between hover:bg-gray-100 transition-colors"
+              className="w-full p-2 flex items-center justify-between hover:bg-gray-100 transition-colors rounded"
             >
               <div className="flex items-center space-x-2">
                 <span className="text-sm font-medium">Wallet</span>
@@ -318,7 +318,7 @@ export default function Sidebar() {
             </button>
 
             {isExpanded && (
-              <div className="p-4 pt-0">
+              <div className="p-2 pt-0">
                 {loading ? (
                   <p className="text-gray-500">Loading...</p>
                 ) : error ? (
@@ -326,7 +326,7 @@ export default function Sidebar() {
                 ) : sortedAndFilteredBalances.length === 0 ? (
                   <p className="text-gray-500">No tokens found</p>
                 ) : (
-                  <div className="space-y-2">
+                  <div className="space-y-1">
                     {sortedAndFilteredBalances.map((token) => {
                       const value = Number(token.balance) * Number(token.tokenPrice);
                       return (
@@ -344,7 +344,7 @@ export default function Sidebar() {
                   </div>
                 )}
                 {hideSmallAssets && totalTokensValue > filteredTokensValue && (
-                  <p className="text-xs text-gray-500 mt-2">
+                  <p className="text-xs text-gray-500 mt-1">
                     Hidden: ${(totalTokensValue - filteredTokensValue).toFixed(2)}
                   </p>
                 )}
@@ -352,15 +352,15 @@ export default function Sidebar() {
             )}
           </div>
 
-          <div className="space-y-2">
+          <div className="space-y-1">
             <h3 className="text-sm font-medium text-gray-600">User Positions</h3>
             {filteredPositions.length === 0 ? (
               <p className="text-sm text-gray-500">No open positions</p>
             ) : (
               filteredPositions.map((wallet) => (
                 wallet.platformList?.map((platform) => (
-                  <div key={platform.analysisPlatformId} className="bg-gray-50 p-3 rounded-lg">
-                    <div className="flex justify-between items-start mb-2">
+                  <div key={platform.analysisPlatformId} className="bg-gray-50 p-2 rounded-lg">
+                    <div className="flex justify-between items-start">
                       <div className="flex items-center space-x-2">
                         {platform.platformLogo && (
                           <img 
@@ -405,20 +405,21 @@ export default function Sidebar() {
               ))
             )}
             {hideSmallAssets && positions.length > filteredPositions.length && (
-              <p className="text-xs text-gray-500 mt-2">
+              <p className="text-xs text-gray-500 mt-1">
                 Hidden positions: {positions.length - filteredPositions.length}
               </p>
             )}
           </div>
         </div>
       </div>
-      <div className="pt-4 border-t border-gray-200 mt-4">
-        <h3 className="text-sm font-medium text-gray-600 mb-2">Tools</h3>
-        <div className="space-y-2">
-          <div className="grid grid-cols-2 gap-2">
+      
+      <div className="mt-2 pt-2 border-t border-gray-200">
+        <h3 className="text-sm font-medium text-gray-600 mb-1">Tools</h3>
+        <div className="space-y-1">
+          <div className="grid grid-cols-2 gap-1">
             <a 
               href="/products" 
-              className="flex items-center space-x-2 text-sm text-blue-600 hover:text-blue-800 hover:underline p-2 rounded hover:bg-gray-50"
+              className="flex items-center space-x-1 text-sm text-blue-600 hover:text-blue-800 hover:underline p-1 rounded hover:bg-gray-50"
             >
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
@@ -427,7 +428,7 @@ export default function Sidebar() {
             </a>
             <a 
               href="/positions" 
-              className="flex items-center space-x-2 text-sm text-blue-600 hover:text-blue-800 hover:underline p-2 rounded hover:bg-gray-50"
+              className="flex items-center space-x-1 text-sm text-blue-600 hover:text-blue-800 hover:underline p-1 rounded hover:bg-gray-50"
             >
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
