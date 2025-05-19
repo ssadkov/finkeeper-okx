@@ -1,6 +1,7 @@
 "use client";
 import { useChat } from '@ai-sdk/react';
 import { WalletView } from './chat/WalletView';
+import { PoolsView } from './chat/PoolsView';
 
 interface MessagePart {
   type: string;
@@ -22,29 +23,44 @@ interface Message {
 export default function Chat() {
   const { messages, input, handleInputChange, handleSubmit } = useChat();
 
-  console.log('Chat messages:', messages);
+  console.log('Chat messages:', JSON.stringify(messages, null, 2));
 
   return (
     <div className="flex flex-col h-[calc(100vh-12rem)] w-full max-w-2xl mx-auto bg-white rounded-lg shadow p-4">
       <div className="flex-grow overflow-y-auto mb-4 space-y-4">
         {messages.map((message: Message, idx) => {
-          console.log('Processing message:', message);
+          console.log('Processing message:', JSON.stringify(message, null, 2));
           return (
             <div key={message.id ?? idx} className="whitespace-pre-wrap">
               <span className="font-semibold">{message.role === 'user' ? 'User:' : 'AI:'} </span>
               {message.parts.map((part: MessagePart, i) => {
-                console.log('Processing part:', part);
+                console.log('Processing part:', JSON.stringify(part, null, 2));
                 if (part.type === 'text') {
                   return <span key={i}>{part.text}</span>;
                 }
-                if (part.type === 'tool-invocation' && part.toolInvocation?.toolName === 'viewWallet') {
-                  console.log('Rendering WalletView from tool invocation');
-                  return <WalletView key={i} message="Wallet information" />;
+                if (part.type === 'tool-invocation') {
+                  console.log('Tool invocation detected:', part.toolInvocation);
+                  if (part.toolInvocation?.toolName === 'viewWalletTool') {
+                    console.log('Rendering WalletView from tool invocation');
+                    return <WalletView key={i} message={part.toolInvocation.result?.props?.message || 'Wallet information'} />;
+                  }
+                  if (part.toolInvocation?.toolName === 'viewPoolsTool') {
+                    console.log('Rendering PoolsView from tool invocation');
+                    return <PoolsView key={i} />;
+                  }
                 }
-                if (part.type === 'ui' && part.component === 'WalletView') {
-                  console.log('Rendering WalletView with props:', part.props);
-                  return <WalletView key={i} message={part.props?.message || 'Wallet information'} />;
+                if (part.type === 'ui') {
+                  console.log('UI component detected:', part.component);
+                  if (part.component === 'WalletView') {
+                    console.log('Rendering WalletView with props:', part.props);
+                    return <WalletView key={i} message={part.props?.message || 'Wallet information'} />;
+                  }
+                  if (part.component === 'PoolsView') {
+                    console.log('Rendering PoolsView with props:', part.props);
+                    return <PoolsView key={i} />;
+                  }
                 }
+                console.log('No matching renderer for part:', JSON.stringify(part, null, 2));
                 return null;
               })}
             </div>
