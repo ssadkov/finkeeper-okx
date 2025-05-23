@@ -72,7 +72,44 @@ export default function Sidebar() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [hideSmallAssets, setHideSmallAssets] = useState(true);
-  const [isExpanded, setIsExpanded] = useState(false);
+  const [isExpanded, setIsExpanded] = useState(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('walletExpanded');
+      console.log('Initial wallet expanded state:', saved);
+      return saved ? JSON.parse(saved) : false;
+    }
+    return false;
+  });
+  const [isPositionsExpanded, setIsPositionsExpanded] = useState(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('positionsExpanded');
+      console.log('Initial positions expanded state:', saved);
+      return saved ? JSON.parse(saved) : false;
+    }
+    return false;
+  });
+
+  const handleWalletToggle = () => {
+    console.log('Toggling wallet, current state:', isExpanded);
+    const newState = !isExpanded;
+    setIsExpanded(newState);
+    localStorage.setItem('walletExpanded', JSON.stringify(newState));
+  };
+
+  const handlePositionsToggle = () => {
+    console.log('Toggling positions, current state:', isPositionsExpanded);
+    const newState = !isPositionsExpanded;
+    setIsPositionsExpanded(newState);
+    localStorage.setItem('positionsExpanded', JSON.stringify(newState));
+  };
+
+  useEffect(() => {
+    console.log('Wallet expanded state changed:', isExpanded);
+  }, [isExpanded]);
+
+  useEffect(() => {
+    console.log('Positions expanded state changed:', isPositionsExpanded);
+  }, [isPositionsExpanded]);
 
   // Эффект для получения общей стоимости
   useEffect(() => {
@@ -294,9 +331,9 @@ export default function Sidebar() {
             </label>
           </div>
 
-          <div className="space-y-1">
+          <div className="space-y-2">
             <button
-              onClick={() => setIsExpanded(!isExpanded)}
+              onClick={handleWalletToggle}
               className="w-full p-2 flex items-center justify-between hover:bg-gray-100 transition-colors rounded"
             >
               <div className="flex items-center space-x-2">
@@ -317,7 +354,7 @@ export default function Sidebar() {
               </svg>
             </button>
 
-            {isExpanded && (
+            <div className={`overflow-hidden transition-all duration-200 ${isExpanded ? 'max-h-[1000px]' : 'max-h-0'}`}>
               <div className="p-2 pt-0">
                 {loading ? (
                   <p className="text-gray-500">Loading...</p>
@@ -349,66 +386,86 @@ export default function Sidebar() {
                   </p>
                 )}
               </div>
-            )}
+            </div>
           </div>
 
-          <div className="space-y-1">
-            <h3 className="text-sm font-medium text-gray-600">User Positions</h3>
-            {filteredPositions.length === 0 ? (
-              <p className="text-sm text-gray-500">No open positions</p>
-            ) : (
-              filteredPositions.map((wallet) => (
-                wallet.platformList?.map((platform) => (
-                  <div key={platform.analysisPlatformId} className="bg-gray-50 p-2 rounded-lg">
-                    <div className="flex justify-between items-start">
-                      <div className="flex items-center space-x-2">
-                        {platform.platformLogo && (
-                          <img 
-                            src={platform.platformLogo} 
-                            alt={platform.platformName}
-                            className="w-4 h-4"
-                          />
-                        )}
-                        <div>
-                          <a 
-                            href={platform.platformUrl}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="text-sm font-medium text-blue-600 hover:text-blue-800 hover:underline"
-                          >
-                            {platform.platformName}
-                          </a>
-                          <p className="text-xs text-gray-500">
-                            {platform.investmentCount} position{platform.investmentCount !== 1 ? 's' : ''}
-                          </p>
-                        </div>
-                      </div>
-                      <div className="text-right">
-                        <p className="text-sm font-medium">${Number(platform.currencyAmount).toFixed(2)}</p>
-                        <div className="flex items-center space-x-1">
-                          {platform.networkBalanceVoList.map((network) => (
-                            <div key={network.chainId} className="flex items-center">
-                              {network.networkLogo && (
-                                <img 
-                                  src={network.networkLogo} 
-                                  alt={network.network}
-                                  className="w-3 h-3"
-                                />
-                              )}
+          <div className="space-y-2">
+            <button
+              onClick={handlePositionsToggle}
+              className="w-full p-2 flex items-center justify-between hover:bg-gray-100 transition-colors rounded"
+            >
+              <div className="flex items-center space-x-2">
+                <span className="text-sm font-medium">User Positions</span>
+              </div>
+              <svg
+                className={`w-4 h-4 transform transition-transform ${isPositionsExpanded ? 'rotate-180' : ''}`}
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+              </svg>
+            </button>
+
+            <div className={`overflow-hidden transition-all duration-200 ${isPositionsExpanded ? 'max-h-[1000px]' : 'max-h-0'}`}>
+              <div className="p-2 pt-0">
+                {filteredPositions.length === 0 ? (
+                  <p className="text-sm text-gray-500">No open positions</p>
+                ) : (
+                  filteredPositions.map((wallet) => (
+                    wallet.platformList?.map((platform) => (
+                      <div key={platform.analysisPlatformId} className="bg-gray-50 p-2 rounded-lg">
+                        <div className="flex justify-between items-start">
+                          <div className="flex items-center space-x-2">
+                            {platform.platformLogo && (
+                              <img 
+                                src={platform.platformLogo} 
+                                alt={platform.platformName}
+                                className="w-4 h-4"
+                              />
+                            )}
+                            <div>
+                              <a 
+                                href={platform.platformUrl}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-sm font-medium text-blue-600 hover:text-blue-800 hover:underline"
+                              >
+                                {platform.platformName}
+                              </a>
+                              <p className="text-xs text-gray-500">
+                                {platform.investmentCount} position{platform.investmentCount !== 1 ? 's' : ''}
+                              </p>
                             </div>
-                          ))}
+                          </div>
+                          <div className="text-right">
+                            <p className="text-sm font-medium">${Number(platform.currencyAmount).toFixed(2)}</p>
+                            <div className="flex items-center space-x-1">
+                              {platform.networkBalanceVoList.map((network) => (
+                                <div key={network.chainId} className="flex items-center">
+                                  {network.networkLogo && (
+                                    <img 
+                                      src={network.networkLogo} 
+                                      alt={network.network}
+                                      className="w-3 h-3"
+                                    />
+                                  )}
+                                </div>
+                              ))}
+                            </div>
+                          </div>
                         </div>
                       </div>
-                    </div>
-                  </div>
-                ))
-              ))
-            )}
-            {hideSmallAssets && positions.length > filteredPositions.length && (
-              <p className="text-xs text-gray-500 mt-1">
-                Hidden positions: {positions.length - filteredPositions.length}
-              </p>
-            )}
+                    ))
+                  ))
+                )}
+                {hideSmallAssets && positions.length > filteredPositions.length && (
+                  <p className="text-xs text-gray-500 mt-1">
+                    Hidden positions: {positions.length - filteredPositions.length}
+                  </p>
+                )}
+              </div>
+            </div>
           </div>
         </div>
       </div>

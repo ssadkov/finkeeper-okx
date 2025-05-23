@@ -57,6 +57,13 @@ export default function PositionsPage() {
         setError(null);
         
         try {
+            // Проверяем наличие ethereum провайдера
+            if (typeof window !== 'undefined' && window.ethereum) {
+                console.log('Ethereum provider detected');
+            } else {
+                console.log('No Ethereum provider detected');
+            }
+
             const response = await fetch('/api/defi/positions', {
                 method: 'POST',
                 headers: {
@@ -96,10 +103,21 @@ export default function PositionsPage() {
     };
 
     const fetchPlatformDetails = async (platformId: string) => {
+        console.log('Fetching platform details for ID:', platformId);
         setLoadingDetails(true);
         try {
+            if (!platformId) {
+                throw new Error('Platform ID is required');
+            }
+
             const response = await fetch(`/api/defi/positions?platformId=${platformId}&chainId=${formData.chainId}&walletAddress=${formData.walletAddress}`);
+            
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            
             const data = await response.json();
+            console.log('Platform details response:', data);
             
             if (data.error) {
                 throw new Error(data.error);
@@ -109,10 +127,9 @@ export default function PositionsPage() {
                 throw new Error('Invalid response format from API');
             }
             
-            // Получаем первый элемент из списка деталей
             const platformDetails = data.data.walletIdPlatformDetailList[0];
+            console.log('Platform details:', platformDetails);
             
-            // Проверяем наличие необходимых данных
             if (!platformDetails.networkHoldVoList || !Array.isArray(platformDetails.networkHoldVoList)) {
                 throw new Error('Invalid platform details format');
             }
@@ -265,7 +282,10 @@ export default function PositionsPage() {
                                             </td>
                                             <td className="px-6 py-4 whitespace-nowrap">
                                                 <button
-                                                    onClick={() => fetchPlatformDetails(platform.analysisPlatformId)}
+                                                    onClick={() => {
+                                                        console.log('Platform ID from button click:', platform.analysisPlatformId);
+                                                        fetchPlatformDetails(platform.analysisPlatformId);
+                                                    }}
                                                     className="text-blue-500 hover:text-blue-600"
                                                 >
                                                     View Details
@@ -343,7 +363,7 @@ export default function PositionsPage() {
                             </div>
 
                             <div className="mt-8 grid grid-cols-1 md:grid-cols-2 gap-8">
-                                <div className="bg-gray-50 p-4 rounded-lg">
+                                <div className="bg-gray-50 p-4 rounded-lg" id="platform-details-request">
                                     <h3 className="text-lg font-semibold mb-2">Platform Details Request</h3>
                                     <pre className="bg-gray-100 p-4 rounded overflow-x-auto">
                                         <code>{`curl -X GET "${window.location.origin}/api/defi/positions?platformId=${selectedPlatform.analysisPlatformId}&chainId=${formData.chainId}&walletAddress=${formData.walletAddress}" \\
@@ -351,14 +371,21 @@ export default function PositionsPage() {
                                     </pre>
                                 </div>
 
-                                <div className="bg-gray-50 p-4 rounded-lg">
+                                <div className="bg-gray-50 p-4 rounded-lg" id="platform-details-response">
                                     <h3 className="text-lg font-semibold mb-2">Platform Details Response</h3>
                                     <pre className="bg-gray-100 p-4 rounded overflow-x-auto">
                                         <code>{JSON.stringify({
                                             code: 0,
-                                            msg: "",
+                                            msg: '',
+                                            error_code: '0',
+                                            error_message: '',
+                                            detailMsg: '',
                                             data: {
-                                                walletIdPlatformDetailList: [selectedPlatform]
+                                                walletIdPlatformDetailList: [selectedPlatform],
+                                                platformName: selectedPlatform.platformName,
+                                                analysisPlatformId: selectedPlatform.analysisPlatformId,
+                                                platformLogo: selectedPlatform.platformLogo,
+                                                platformUrl: selectedPlatform.platformUrl
                                             }
                                         }, null, 2)}</code>
                                     </pre>
