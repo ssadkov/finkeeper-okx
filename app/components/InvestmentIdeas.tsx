@@ -3,6 +3,95 @@
 import { useState, useEffect } from 'react';
 import { OkxProduct } from '../utils/okxApi';
 import { useWalletContext } from '../context/WalletContext';
+import { useWallet } from '@solana/wallet-adapter-react';
+import { Connection } from '@solana/web3.js';
+import { usePlatforms } from '../hooks/usePlatforms';
+
+interface SupplyModalProps {
+    isOpen: boolean;
+    onClose: () => void;
+    product: OkxProduct | null;
+    maxAmount: number;
+    onSupply: (amount: number) => void;
+    isProcessing: boolean;
+}
+
+function SupplyModal({ isOpen, onClose, product, maxAmount, onSupply, isProcessing }: SupplyModalProps) {
+    const [amount, setAmount] = useState('');
+
+    if (!isOpen || !product) return null;
+
+    const tokenSymbol = product.underlyingToken[0]?.tokenSymbol || '';
+
+    const handleSupply = () => {
+        const numAmount = parseFloat(amount);
+        if (numAmount > 0 && numAmount <= maxAmount) {
+            onSupply(numAmount);
+            onClose();
+        }
+    };
+
+    return (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <div className="bg-white rounded-lg p-6 w-96">
+                <div className="flex justify-between items-center mb-4">
+                    <h2 className="text-xl font-bold">Supply {product.investmentName} ({tokenSymbol})</h2>
+                    <button onClick={onClose} className="text-gray-500 hover:text-gray-700">
+                        ✕
+                    </button>
+                </div>
+                
+                <div className="mb-4">
+                    <div className="flex items-center space-x-2 mb-2">
+                        <span className="text-gray-600">Protocol:</span>
+                        <span className="font-medium">{product.platformName}</span>
+                    </div>
+                    <div className="flex items-center space-x-2 mb-2">
+                        <span className="text-gray-600">APY:</span>
+                        <span className="font-medium text-green-600">
+                            {(parseFloat(product.rate) * 100).toFixed(2)}%
+                        </span>
+                    </div>
+                </div>
+
+                <div className="mb-4">
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Amount to Supply ({tokenSymbol})
+                    </label>
+                    <div className="flex space-x-2">
+                        <input
+                            type="number"
+                            value={amount}
+                            onChange={(e) => setAmount(e.target.value)}
+                            min="0"
+                            max={maxAmount}
+                            step="0.000001"
+                            className="flex-1 px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            placeholder={`Enter amount in ${tokenSymbol}`}
+                        />
+                        <button
+                            onClick={() => setAmount(maxAmount.toString())}
+                            className="px-3 py-2 text-sm text-blue-600 hover:text-blue-700"
+                        >
+                            MAX
+                        </button>
+                    </div>
+                    <div className="text-sm text-gray-500 mt-1">
+                        Available: {maxAmount.toFixed(6)} {tokenSymbol}
+                    </div>
+                </div>
+
+                <button
+                    onClick={handleSupply}
+                    disabled={!amount || parseFloat(amount) <= 0 || parseFloat(amount) > maxAmount || isProcessing}
+                    className="w-full py-2 px-4 bg-blue-500 text-white rounded-md hover:bg-blue-600 disabled:bg-gray-300 disabled:cursor-not-allowed"
+                >
+                    {isProcessing ? 'Processing...' : `Supply ${tokenSymbol}`}
+                </button>
+            </div>
+        </div>
+    );
+}
 
 export default function InvestmentIdeas() {
     const [products, setProducts] = useState<OkxProduct[]>([]);
@@ -13,6 +102,12 @@ export default function InvestmentIdeas() {
     const [tokenFilter, setTokenFilter] = useState('');
     const [showOnlyWalletTokens, setShowOnlyWalletTokens] = useState(false);
     const { walletTokens, publicKey } = useWalletContext();
+    const [selectedProduct, setSelectedProduct] = useState<OkxProduct | null>(null);
+    const [isModalOpen, setIsModalOpen] = useState(false);
+    const { sendTransaction } = useWallet();
+    const [isProcessing, setIsProcessing] = useState(false);
+    const connection = new Connection('https://api.mainnet-beta.solana.com', 'confirmed');
+    const { platforms, loading: platformsLoading } = usePlatforms();
 
     const isTokenInWallet = (tokenSymbol: string) => {
         // Проверяем нативный SOL
@@ -113,6 +208,58 @@ export default function InvestmentIdeas() {
         }
     }, [loading, offset, total]);
 
+    const handleSupply = async (amount: number) => {
+        if (!selectedProduct || !publicKey) return;
+
+        try {
+            setIsProcessing(true);
+            const tokenSymbol = selectedProduct.underlyingToken[0]?.tokenSymbol;
+
+            // Call the supply API endpoint
+            const response = await fetch('/api/kamino/supply', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    amount,
+                    symbol: tokenSymbol,
+                    walletAddress: publicKey.toString()
+                })
+            });
+
+            const data = await response.json();
+
+            if (!response.ok) {
+                throw new Error(data.error || 'Failed to process supply transaction');
+            }
+
+            // Send the transaction
+            const signature = await sendTransaction(data.transaction, connection);
+            console.log('Transaction sent:', signature);
+
+            // Close the modal
+            setIsModalOpen(false);
+            setSelectedProduct(null);
+
+            // TODO: Show success message or update UI
+        } catch (error) {
+            console.error('Error supplying tokens:', error);
+            // TODO: Show error message to user
+        } finally {
+            setIsProcessing(false);
+        }
+    };
+
+    const getTokenBalance = (tokenSymbol: string) => {
+        if (tokenSymbol === 'SOL' && publicKey) {
+            // TODO: Get SOL balance
+            return 0;
+        }
+        const token = walletTokens?.find(t => t.symbol.toLowerCase() === tokenSymbol.toLowerCase());
+        return token ? parseFloat(token.balance) : 0;
+    };
+
     if (error) {
         return (
             <div className="p-4 flex flex-col items-center justify-center min-h-screen">
@@ -184,12 +331,56 @@ export default function InvestmentIdeas() {
                                 {filteredProducts.map((product) => (
                                     <tr key={product.investmentId} className="hover:bg-gray-50">
                                         <td className="px-6 py-4 whitespace-nowrap">
-                                            <div className={`text-sm font-medium ${hasWalletTokens(product) ? 'text-green-600' : 'text-gray-900'}`}>
-                                                {product.investmentName}
+                                            <div className="flex items-center justify-between">
+                                                <div className={`text-sm font-medium ${hasWalletTokens(product) ? 'text-green-600' : 'text-gray-900'}`}>
+                                                    {product.investmentName}
+                                                </div>
+                                                {product.platformName === 'Kamino' && hasWalletTokens(product) && (
+                                                    <button
+                                                        onClick={() => {
+                                                            setSelectedProduct(product);
+                                                            setIsModalOpen(true);
+                                                        }}
+                                                        className="ml-4 px-3 py-1 text-sm bg-blue-500 text-white rounded hover:bg-blue-600 transition-colors"
+                                                    >
+                                                        Supply
+                                                    </button>
+                                                )}
                                             </div>
                                         </td>
                                         <td className="px-6 py-4 whitespace-nowrap">
-                                            <div className="text-sm text-gray-900">{product.platformName}</div>
+                                            <div className="text-sm text-gray-900">
+                                                {platforms[product.platformName] ? (
+                                                    <a 
+                                                        href={platforms[product.platformName].platformWebSite}
+                                                        target="_blank"
+                                                        rel="noopener noreferrer"
+                                                        className="inline-flex items-center text-blue-600 hover:text-blue-800 hover:underline"
+                                                    >
+                                                        <img 
+                                                            src={platforms[product.platformName].logo} 
+                                                            alt={product.platformName}
+                                                            className="w-6 h-6 mr-2 rounded-full"
+                                                        />
+                                                        {product.platformName}
+                                                        <svg 
+                                                            className="w-4 h-4 ml-1" 
+                                                            fill="none" 
+                                                            stroke="currentColor" 
+                                                            viewBox="0 0 24 24"
+                                                        >
+                                                            <path 
+                                                                strokeLinecap="round" 
+                                                                strokeLinejoin="round" 
+                                                                strokeWidth={2} 
+                                                                d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" 
+                                                            />
+                                                        </svg>
+                                                    </a>
+                                                ) : (
+                                                    product.platformName
+                                                )}
+                                            </div>
                                         </td>
                                         <td className="px-6 py-4 whitespace-nowrap">
                                             <div className="text-sm text-green-600 font-medium">
@@ -214,6 +405,18 @@ export default function InvestmentIdeas() {
                     )}
                 </div>
             )}
+
+            <SupplyModal
+                isOpen={isModalOpen}
+                onClose={() => {
+                    setIsModalOpen(false);
+                    setSelectedProduct(null);
+                }}
+                product={selectedProduct}
+                maxAmount={selectedProduct ? getTokenBalance(selectedProduct.underlyingToken[0].tokenSymbol) : 0}
+                onSupply={handleSupply}
+                isProcessing={isProcessing}
+            />
         </div>
     );
 } 

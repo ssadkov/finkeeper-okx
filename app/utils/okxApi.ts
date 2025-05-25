@@ -70,7 +70,7 @@ export const makeOkxRequest = async <T>(
         // Для GET запросов добавляем параметры в URL
         const queryParams = new URLSearchParams();
         Object.entries(params).forEach(([key, value]) => {
-            if (value !== undefined) {
+            if (value !== undefined && value !== null) {
                 queryParams.append(key, value.toString());
             }
         });
@@ -108,6 +108,7 @@ export interface OkxProduct {
     investType: string;
     platformName: string;
     platformId: string;
+    platformUrl: string;
     poolVersion: string;
     rateType: string;
     tvl: string;
@@ -125,6 +126,27 @@ export interface OkxProductsResponse {
         investments: OkxProduct[];
         total: string;
     };
+}
+
+export interface OkxPlatformInfo {
+    investmentId: string;
+    protocolId: string;
+    network: string;
+}
+
+export interface OkxPlatform {
+    platformId: number;
+    platformName: string;
+    platformWebSite: string;
+    investmentApiUrlPattern: string;
+    investmentPageUrlPattern: string;
+    platformMinInfos: OkxPlatformInfo[];
+}
+
+export interface OkxPlatformsResponse {
+    code: number;
+    msg: string;
+    data: OkxPlatform[];
 }
 
 // Функция для получения списка продуктов
