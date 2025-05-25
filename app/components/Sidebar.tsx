@@ -64,43 +64,101 @@ interface PositionsResponse {
   };
 }
 
+interface PositionDetail {
+  networkHoldVoList: Array<{
+    network: string;
+    chainId: number;
+    totalAssert: string;
+    investTokenBalanceVoList: Array<{
+      investmentName: string;
+      investmentKey: string;
+      investType: number;
+      investName: string;
+      assetsTokenList: Array<{
+        tokenSymbol: string;
+        tokenLogo: string;
+        coinAmount: string;
+        currencyAmount: string;
+        tokenPrecision: number;
+        tokenAddress: string;
+        network: string;
+      }>;
+      rewardDefiTokenInfo: any[];
+      totalValue: string;
+    }>;
+    availableRewards: any[];
+    airDropRewardInfo: any[];
+  }>;
+  accountId: string;
+}
+
+interface PositionDetailsResponse {
+  code: number;
+  msg: string;
+  error_code: string;
+  error_message: string;
+  detailMsg: string;
+  data: {
+    walletIdPlatformDetailList: PositionDetail[];
+  };
+}
+
 export default function Sidebar() {
   const { publicKey, setWalletTokens } = useWalletContext();
   const [totalValue, setTotalValue] = useState<string>('0');
   const [balances, setBalances] = useState<TokenAsset[]>([]);
   const [positions, setPositions] = useState<Position[]>([]);
+  const [positionDetails, setPositionDetails] = useState<Record<string, PositionDetail[]>>({});
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [hideSmallAssets, setHideSmallAssets] = useState(true);
-  const [isExpanded, setIsExpanded] = useState(() => {
-    if (typeof window !== 'undefined') {
-      const saved = localStorage.getItem('walletExpanded');
-      console.log('Initial wallet expanded state:', saved);
-      return saved ? JSON.parse(saved) : false;
+  const [isExpanded, setIsExpanded] = useState(false);
+  const [isPositionsExpanded, setIsPositionsExpanded] = useState(false);
+  const [loadingPositions, setLoadingPositions] = useState<Record<string, boolean>>({});
+
+  // Инициализация состояний из localStorage после монтирования
+  useEffect(() => {
+    const savedWalletExpanded = localStorage.getItem('walletExpanded');
+    const savedPositionsExpanded = localStorage.getItem('positionsExpanded');
+    
+    if (savedWalletExpanded) {
+      setIsExpanded(JSON.parse(savedWalletExpanded));
     }
-    return false;
-  });
-  const [isPositionsExpanded, setIsPositionsExpanded] = useState(() => {
-    if (typeof window !== 'undefined') {
-      const saved = localStorage.getItem('positionsExpanded');
-      console.log('Initial positions expanded state:', saved);
-      return saved ? JSON.parse(saved) : false;
+    if (savedPositionsExpanded) {
+      setIsPositionsExpanded(JSON.parse(savedPositionsExpanded));
     }
-    return false;
-  });
+  }, []);
 
   const handleWalletToggle = () => {
-    console.log('Toggling wallet, current state:', isExpanded);
     const newState = !isExpanded;
     setIsExpanded(newState);
     localStorage.setItem('walletExpanded', JSON.stringify(newState));
   };
 
   const handlePositionsToggle = () => {
-    console.log('Toggling positions, current state:', isPositionsExpanded);
     const newState = !isPositionsExpanded;
     setIsPositionsExpanded(newState);
     localStorage.setItem('positionsExpanded', JSON.stringify(newState));
+  };
+
+  const handleProtocolClick = async (platformId: string) => {
+    if (!publicKey) return;
+
+    setLoadingPositions(prev => ({ ...prev, [platformId]: true }));
+    try {
+      const response = await fetch(`/api/defi/positions?platformId=${platformId}&chainId=501&walletAddress=${publicKey.toString()}`);
+      const data: PositionDetailsResponse = await response.json();
+
+      if (data.code === 0 && data.data?.walletIdPlatformDetailList) {
+        setPositionDetails(prev => ({ ...prev, [platformId]: data.data.walletIdPlatformDetailList }));
+      } else {
+        console.error('Failed to fetch position details:', data);
+      }
+    } catch (err) {
+      console.error('Error fetching position details:', err);
+    } finally {
+      setLoadingPositions(prev => ({ ...prev, [platformId]: false }));
+    }
   };
 
   useEffect(() => {
@@ -410,8 +468,11 @@ export default function Sidebar() {
                 ) : (
                   filteredPositions.map((wallet) => (
                     wallet.platformList?.map((platform) => (
-                      <div key={platform.analysisPlatformId} className="bg-gray-50 p-2 rounded-lg">
-                        <div className="flex justify-between items-start">
+                      <div key={platform.analysisPlatformId} className="bg-gray-50 p-2 rounded-lg mb-2">
+                        <div 
+                          className="flex justify-between items-start cursor-pointer hover:bg-gray-100 rounded p-1"
+                          onClick={() => handleProtocolClick(platform.analysisPlatformId)}
+                        >
                           <div className="flex items-center space-x-2">
                             {platform.platformLogo && (
                               <img 
@@ -421,14 +482,9 @@ export default function Sidebar() {
                               />
                             )}
                             <div>
-                              <a 
-                                href={platform.platformUrl}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="text-sm font-medium text-blue-600 hover:text-blue-800 hover:underline"
-                              >
+                              <div className="text-sm font-medium text-blue-600">
                                 {platform.platformName}
-                              </a>
+                              </div>
                               <p className="text-xs text-gray-500">
                                 {platform.investmentCount} position{platform.investmentCount !== 1 ? 's' : ''}
                               </p>
@@ -451,6 +507,51 @@ export default function Sidebar() {
                             </div>
                           </div>
                         </div>
+
+                        {/* Детали позиции */}
+                        {loadingPositions[platform.analysisPlatformId] ? (
+                          <div className="mt-2 text-sm text-gray-500">Loading details...</div>
+                        ) : positionDetails[platform.analysisPlatformId]?.map((detail) => (
+                          detail.networkHoldVoList.map((network) => (
+                            network.investTokenBalanceVoList.map((investment) => (
+                              <div key={investment.investmentKey} className="mt-2 pt-2 border-t border-gray-200">
+                                <div className="flex justify-between items-start">
+                                  <div>
+                                    <div className="text-sm font-medium">{investment.investmentName}</div>
+                                    <div className="text-xs text-gray-500">{investment.investName}</div>
+                                  </div>
+                                  <div className="text-right">
+                                    <div className="text-sm font-medium">
+                                      ${parseFloat(investment.totalValue).toFixed(2)}
+                                    </div>
+                                  </div>
+                                </div>
+                                <div className="mt-1 space-y-1">
+                                  {investment.assetsTokenList.map((token) => (
+                                    <div key={token.tokenAddress} className="flex items-center justify-between text-xs">
+                                      <div className="flex items-center space-x-1">
+                                        {token.tokenLogo && (
+                                          <img 
+                                            src={token.tokenLogo} 
+                                            alt={token.tokenSymbol}
+                                            className="w-4 h-4"
+                                          />
+                                        )}
+                                        <span>{token.tokenSymbol}</span>
+                                      </div>
+                                      <div className="text-right">
+                                        <div>{parseFloat(token.coinAmount).toFixed(6)}</div>
+                                        <div className="text-gray-500">
+                                          ${parseFloat(token.currencyAmount).toFixed(2)}
+                                        </div>
+                                      </div>
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
+                            ))
+                          ))
+                        ))}
                       </div>
                     ))
                   ))
