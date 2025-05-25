@@ -65,7 +65,7 @@ interface PositionsResponse {
 }
 
 export default function Sidebar() {
-  const { publicKey } = useWalletContext();
+  const { publicKey, setWalletTokens } = useWalletContext();
   const [totalValue, setTotalValue] = useState<string>('0');
   const [balances, setBalances] = useState<TokenAsset[]>([]);
   const [positions, setPositions] = useState<Position[]>([]);
@@ -111,105 +111,101 @@ export default function Sidebar() {
     console.log('Positions expanded state changed:', isPositionsExpanded);
   }, [isPositionsExpanded]);
 
-  // Эффект для получения общей стоимости
   useEffect(() => {
-    const fetchTotalValue = async () => {
-      if (!publicKey) {
-        console.log('No public key available');
-        return;
-      }
-      
-      setLoading(true);
-      setError(null);
-      
-      try {
-        console.log('Fetching total value for address:', publicKey.toString());
-        
-        const timestamp = new Date().toISOString();
-        const method = 'GET';
-        const requestPath = `/api/v5/wallet/asset/total-value-by-address?address=${publicKey.toString()}&chains=501&assetType=0`;
-        
-        const signature = createSignature(timestamp, method, requestPath);
-
-        const response = await fetch(
-          `https://web3.okx.com${requestPath}`,
-          {
-            headers: {
-              'OK-ACCESS-PROJECT': process.env.NEXT_PUBLIC_OKX_PROJECT_ID || '',
-              'OK-ACCESS-KEY': process.env.NEXT_PUBLIC_OKX_API_KEY || '',
-              'OK-ACCESS-SIGN': signature,
-              'OK-ACCESS-PASSPHRASE': process.env.NEXT_PUBLIC_OKX_PASSPHRASE || '',
-              'OK-ACCESS-TIMESTAMP': timestamp,
-            },
-          }
-        );
-
-        const data: TotalValueResponse = await response.json();
-        console.log('API Response:', data);
-        
-        if (data.code === '0' && data.data.length > 0) {
-          setTotalValue(data.data[0].totalValue);
-        } else {
-          console.error('API Error:', data.msg);
-          setError('Failed to fetch total value: ' + data.msg);
-        }
-      } catch (err) {
-        console.error('Fetch Error:', err);
-        setError('Error fetching total value');
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchTotalValue();
+    if (publicKey) {
+      fetchWalletData();
+    }
   }, [publicKey]);
 
-  // Эффект для получения балансов токенов
-  useEffect(() => {
-    const fetchBalances = async () => {
+  const fetchWalletData = async () => {
+    setLoading(true);
+    setError(null);
+    try {
       if (!publicKey) return;
 
-      try {
-        const timestamp = new Date().toISOString();
-        const method = 'GET';
-        const requestPath = `/api/v5/wallet/asset/all-token-balances-by-address?address=${publicKey.toString()}&chains=501&filter=1`;
+      console.log('Fetching total value for address:', publicKey.toString());
+      
+      const timestamp = new Date().toISOString();
+      const method = 'GET';
+      const requestPath = `/api/v5/wallet/asset/total-value-by-address?address=${publicKey.toString()}&chains=501&assetType=0`;
+      
+      const signature = createSignature(timestamp, method, requestPath);
 
-        const signature = createSignature(timestamp, method, requestPath);
-
-        console.log('Balance request:', {
-          path: requestPath,
-          timestamp
-        });
-
-        const response = await fetch(
-          `https://web3.okx.com${requestPath}`,
-          {
-            method,
-            headers: {
-              'OK-ACCESS-PROJECT': process.env.NEXT_PUBLIC_OKX_PROJECT_ID || '',
-              'OK-ACCESS-KEY': process.env.NEXT_PUBLIC_OKX_API_KEY || '',
-              'OK-ACCESS-SIGN': signature,
-              'OK-ACCESS-PASSPHRASE': process.env.NEXT_PUBLIC_OKX_PASSPHRASE || '',
-              'OK-ACCESS-TIMESTAMP': timestamp,
-            },
-          }
-        );
-
-        const data: BalanceResponse = await response.json();
-        console.log('Balance Response:', data);
-
-        if (data.code === '0' && data.data.length > 0) {
-          setBalances(data.data[0].tokenAssets);
-        } else {
-          console.error('Balance API Error:', data.msg);
+      const response = await fetch(
+        `https://web3.okx.com${requestPath}`,
+        {
+          headers: {
+            'OK-ACCESS-PROJECT': process.env.NEXT_PUBLIC_OKX_PROJECT_ID || '',
+            'OK-ACCESS-KEY': process.env.NEXT_PUBLIC_OKX_API_KEY || '',
+            'OK-ACCESS-SIGN': signature,
+            'OK-ACCESS-PASSPHRASE': process.env.NEXT_PUBLIC_OKX_PASSPHRASE || '',
+            'OK-ACCESS-TIMESTAMP': timestamp,
+          },
         }
-      } catch (err) {
-        console.error('Balance Fetch Error:', err);
-      }
-    };
+      );
 
-    fetchBalances();
-  }, [publicKey]);
+      const data: TotalValueResponse = await response.json();
+      console.log('API Response:', data);
+      
+      if (data.code === '0' && data.data.length > 0) {
+        setTotalValue(data.data[0].totalValue);
+      } else {
+        console.error('API Error:', data.msg);
+        setError('Failed to fetch total value: ' + data.msg);
+      }
+
+      // Получаем балансы токенов
+      const balanceTimestamp = new Date().toISOString();
+      const balanceMethod = 'GET';
+      const balanceRequestPath = `/api/v5/wallet/asset/all-token-balances-by-address?address=${publicKey.toString()}&chains=501&filter=1`;
+
+      const balanceSignature = createSignature(balanceTimestamp, balanceMethod, balanceRequestPath);
+
+      console.log('Balance request:', {
+        path: balanceRequestPath,
+        timestamp: balanceTimestamp
+      });
+
+      const balanceResponse = await fetch(
+        `https://web3.okx.com${balanceRequestPath}`,
+        {
+          method: balanceMethod,
+          headers: {
+            'OK-ACCESS-PROJECT': process.env.NEXT_PUBLIC_OKX_PROJECT_ID || '',
+            'OK-ACCESS-KEY': process.env.NEXT_PUBLIC_OKX_API_KEY || '',
+            'OK-ACCESS-SIGN': balanceSignature,
+            'OK-ACCESS-PASSPHRASE': process.env.NEXT_PUBLIC_OKX_PASSPHRASE || '',
+            'OK-ACCESS-TIMESTAMP': balanceTimestamp,
+          },
+        }
+      );
+
+      const balanceData: BalanceResponse = await balanceResponse.json();
+      console.log('Balance Response:', balanceData);
+
+      if (balanceData.code === '0' && balanceData.data.length > 0) {
+        const newBalances = balanceData.data[0].tokenAssets;
+        setBalances(newBalances);
+        
+        // Обновляем токены в контексте
+        const tokenInfo = newBalances.map(token => ({
+          symbol: token.symbol,
+          balance: token.balance,
+          address: token.tokenAddress
+        }));
+        console.log('Updating wallet tokens:', tokenInfo);
+        setWalletTokens(tokenInfo);
+      } else {
+        console.error('Balance API Error:', balanceData.msg);
+      }
+
+    } catch (err) {
+      console.error('Error fetching wallet data:', err);
+      setError(err instanceof Error ? err.message : 'Failed to fetch wallet data');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   // Эффект для получения позиций
   useEffect(() => {
