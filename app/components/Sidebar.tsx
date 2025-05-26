@@ -115,7 +115,7 @@ interface OkxBalance {
 
 export default function Sidebar() {
   const { publicKey, setWalletTokens } = useWalletContext();
-  const { isConnected, balances: okxBalances, totalBalance: okxTotalBalance } = useOkx();
+  const { isConnected, balances: okxBalances, totalBalance: okxTotalBalance, connect } = useOkx();
   const [totalValue, setTotalValue] = useState<string>('0');
   const [balances, setBalances] = useState<TokenAsset[]>([]);
   const [positions, setPositions] = useState<Position[]>([]);
@@ -146,6 +146,13 @@ export default function Sidebar() {
       setIsOkxExpanded(JSON.parse(savedOkxExpanded));
     }
   }, []);
+
+  // Обновляем данные OKX при изменении состояния подключения
+  useEffect(() => {
+    if (isConnected) {
+      connect();
+    }
+  }, [isConnected, connect]);
 
   const handleWalletToggle = () => {
     const newState = !isWalletExpanded;

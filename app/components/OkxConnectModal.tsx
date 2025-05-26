@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { useOkx } from '../context/OkxContext';
 
 interface OkxConnectModalProps {
     isOpen: boolean;
@@ -12,6 +13,7 @@ export default function OkxConnectModal({ isOpen, onClose }: OkxConnectModalProp
     const [apiSecret, setApiSecret] = useState('');
     const [passphrase, setPassphrase] = useState('');
     const [isLoading, setIsLoading] = useState(false);
+    const { connect } = useOkx();
 
     const handleConnect = async () => {
         setIsLoading(true);
@@ -90,6 +92,10 @@ export default function OkxConnectModal({ isOpen, onClose }: OkxConnectModalProp
                 localStorage.setItem('okx_api_key', apiKey);
                 localStorage.setItem('okx_api_secret', apiSecret);
                 localStorage.setItem('okx_passphrase', passphrase);
+                
+                // Вызываем функцию connect из контекста OKX
+                await connect();
+                
                 onClose();
             } else {
                 throw new Error(fundData.msg || unifiedData.msg || 'Failed to connect to OKX');
