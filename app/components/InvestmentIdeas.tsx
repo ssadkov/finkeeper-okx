@@ -7,6 +7,7 @@ import { useWallet } from '@solana/wallet-adapter-react';
 import { Connection } from '@solana/web3.js';
 import { usePlatforms } from '../hooks/usePlatforms';
 import { useWalletModal } from '@solana/wallet-adapter-react-ui';
+import SwapModal from './SwapModal';
 
 interface SupplyModalProps {
     isOpen: boolean;
@@ -105,6 +106,7 @@ export default function InvestmentIdeas() {
     const { walletTokens, publicKey: contextPublicKey } = useWalletContext();
     const [selectedProduct, setSelectedProduct] = useState<OkxProduct | null>(null);
     const [isModalOpen, setIsModalOpen] = useState(false);
+    const [isSwapModalOpen, setIsSwapModalOpen] = useState(false);
     const { sendTransaction, signMessage, publicKey } = useWallet();
     const { setVisible } = useWalletModal();
     const [isProcessing, setIsProcessing] = useState(false);
@@ -300,17 +302,54 @@ export default function InvestmentIdeas() {
                     <h1 className="text-2xl font-bold mb-4">Investment Ideas</h1>
                     <p className="text-gray-600">Top DeFi opportunities on Solana network</p>
                 </div>
-                <button
-                    onClick={handleSignMessage}
-                    disabled={!publicKey}
-                    className={`px-4 py-2 rounded transition-colors ${
-                        publicKey 
-                            ? 'bg-blue-500 text-white hover:bg-blue-600' 
-                            : 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                    }`}
-                >
-                    SignMessage
-                </button>
+                <div className="flex gap-2">
+                    <button
+                        onClick={() => fetchProducts(0)}
+                        disabled={loading}
+                        className={`p-2 rounded transition-colors ${
+                            loading 
+                                ? 'bg-gray-300 text-gray-500 cursor-not-allowed' 
+                                : 'bg-blue-500 text-white hover:bg-blue-600'
+                        }`}
+                        title="Refresh"
+                    >
+                        <svg 
+                            className={`w-5 h-5 ${loading ? 'animate-spin' : ''}`} 
+                            fill="none" 
+                            stroke="currentColor" 
+                            viewBox="0 0 24 24"
+                        >
+                            <path 
+                                strokeLinecap="round" 
+                                strokeLinejoin="round" 
+                                strokeWidth={2} 
+                                d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" 
+                            />
+                        </svg>
+                    </button>
+                    <button
+                        onClick={handleSignMessage}
+                        disabled={!publicKey}
+                        className={`px-4 py-2 rounded transition-colors ${
+                            publicKey 
+                                ? 'bg-blue-500 text-white hover:bg-blue-600' 
+                                : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                        }`}
+                    >
+                        SignMessage
+                    </button>
+                    <button
+                        onClick={() => setIsSwapModalOpen(true)}
+                        disabled={!publicKey}
+                        className={`px-4 py-2 rounded transition-colors ${
+                            publicKey 
+                                ? 'bg-green-500 text-white hover:bg-green-600' 
+                                : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                        }`}
+                    >
+                        Swap
+                    </button>
+                </div>
             </div>
 
             {loading && products.length === 0 && (
@@ -448,6 +487,20 @@ export default function InvestmentIdeas() {
                 maxAmount={selectedProduct ? getTokenBalance(selectedProduct.underlyingToken[0].tokenSymbol) : 0}
                 onSupply={handleSupply}
                 isProcessing={isProcessing}
+            />
+
+            <SwapModal
+                isOpen={isSwapModalOpen}
+                onClose={() => setIsSwapModalOpen(false)}
+                fromToken={{
+                    symbol: 'SOL',
+                    address: '11111111111111111111111111111111',
+                    balance: 1.0 // TODO: Get actual balance
+                }}
+                toToken={{
+                    symbol: 'USDC',
+                    address: 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v'
+                }}
             />
         </div>
     );

@@ -171,90 +171,78 @@ export default function Sidebar() {
 
   useEffect(() => {
     if (publicKey) {
+      console.log('Wallet connected, fetching data for:', publicKey.toString());
       fetchWalletData();
+    } else {
+      // Сбрасываем данные при отключении кошелька
+      setTotalValue('0');
+      setBalances([]);
+      setPositions([]);
+      setPositionDetails({});
+      setWalletTokens([]);
     }
   }, [publicKey]);
 
   const fetchWalletData = async () => {
+    if (!publicKey) return;
+    
     setLoading(true);
     setError(null);
     try {
-      if (!publicKey) return;
-
-      console.log('Fetching total value for address:', publicKey.toString());
+      console.log('Fetching wallet data for address:', publicKey.toString());
       
-      const timestamp = new Date().toISOString();
-      const method = 'GET';
-      const requestPath = `/api/v5/wallet/asset/total-value-by-address?address=${publicKey.toString()}&chains=501&assetType=0`;
-      
-      const signature = createSignature(timestamp, method, requestPath);
-
-      const response = await fetch(
-        `https://web3.okx.com${requestPath}`,
-        {
-          headers: {
-            'OK-ACCESS-PROJECT': process.env.NEXT_PUBLIC_OKX_PROJECT_ID || '',
-            'OK-ACCESS-KEY': process.env.NEXT_PUBLIC_OKX_API_KEY || '',
-            'OK-ACCESS-SIGN': signature,
-            'OK-ACCESS-PASSPHRASE': process.env.NEXT_PUBLIC_OKX_PASSPHRASE || '',
-            'OK-ACCESS-TIMESTAMP': timestamp,
-          },
-        }
-      );
-
-      const data: TotalValueResponse = await response.json();
-      console.log('API Response:', data);
-      
-      if (data.code === '0' && data.data.length > 0) {
-        setTotalValue(data.data[0].totalValue);
-      } else {
-        console.error('API Error:', data.msg);
-        setError('Failed to fetch total value: ' + data.msg);
-      }
-
-      // Получаем балансы токенов
-      const balanceTimestamp = new Date().toISOString();
-      const balanceMethod = 'GET';
-      const balanceRequestPath = `/api/v5/wallet/asset/all-token-balances-by-address?address=${publicKey.toString()}&chains=501&filter=1`;
-
-      const balanceSignature = createSignature(balanceTimestamp, balanceMethod, balanceRequestPath);
-
-      console.log('Balance request:', {
-        path: balanceRequestPath,
-        timestamp: balanceTimestamp
+      // Обновляем данные кошелька
+      const response = await fetch('/api/wallet/refresh', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          walletAddress: publicKey.toString()
+        })
       });
 
-      const balanceResponse = await fetch(
-        `https://web3.okx.com${balanceRequestPath}`,
-        {
-          method: balanceMethod,
-          headers: {
-            'OK-ACCESS-PROJECT': process.env.NEXT_PUBLIC_OKX_PROJECT_ID || '',
-            'OK-ACCESS-KEY': process.env.NEXT_PUBLIC_OKX_API_KEY || '',
-            'OK-ACCESS-SIGN': balanceSignature,
-            'OK-ACCESS-PASSPHRASE': process.env.NEXT_PUBLIC_OKX_PASSPHRASE || '',
-            'OK-ACCESS-TIMESTAMP': balanceTimestamp,
-          },
-        }
-      );
+      const data = await response.json();
 
-      const balanceData: BalanceResponse = await balanceResponse.json();
-      console.log('Balance Response:', balanceData);
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to fetch wallet data');
+      }
 
-      if (balanceData.code === '0' && balanceData.data.length > 0) {
-        const newBalances = balanceData.data[0].tokenAssets;
-        setBalances(newBalances);
-        
-        // Обновляем токены в контексте
-        const tokenInfo = newBalances.map(token => ({
-          symbol: token.symbol,
-          balance: token.balance,
-          address: token.tokenAddress
-        }));
-        console.log('Updating wallet tokens:', tokenInfo);
-        setWalletTokens(tokenInfo);
+      setTotalValue(data.totalValue);
+      setBalances(data.balances);
+      
+      // Обновляем токены в контексте
+      const tokenInfo = data.balances.map((token: TokenAsset) => ({
+        symbol: token.symbol,
+        balance: token.balance,
+        address: token.tokenAddress
+      }));
+      console.log('Updating wallet tokens:', tokenInfo);
+      setWalletTokens(tokenInfo);
+
+      // Обновляем позиции
+      const positionsResponse = await fetch('/api/defi/positions', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          walletAddressList: [{
+            chainId: 501, // Solana
+            walletAddress: publicKey.toString()
+          }]
+        })
+      });
+
+      const positionsData = await positionsResponse.json();
+
+      if (positionsData.code === 0 && positionsData.data?.walletIdPlatformList) {
+        const validPositions = positionsData.data.walletIdPlatformList.filter(
+          (wallet: Position) => Array.isArray(wallet.platformList) && wallet.platformList.length > 0
+        );
+        setPositions(validPositions);
       } else {
-        console.error('Balance API Error:', balanceData.msg);
+        console.error('Positions API Error:', positionsData);
       }
 
     } catch (err) {
@@ -360,7 +348,33 @@ export default function Sidebar() {
   return (
     <div className="w-80 bg-white shadow-lg p-4 flex flex-col h-full">
       <div className="flex-grow overflow-y-auto pr-2">
-        <h2 className="text-lg font-semibold mb-2">Wallet Overview</h2>
+        <div className="flex items-center justify-between mb-2">
+          <h2 className="text-lg font-semibold">Wallet Overview</h2>
+          <button
+            onClick={fetchWalletData}
+            disabled={loading}
+            className={`p-1.5 rounded transition-colors ${
+              loading 
+                ? 'bg-gray-300 text-gray-500 cursor-not-allowed' 
+                : 'bg-blue-500 text-white hover:bg-blue-600'
+            }`}
+            title="Refresh wallet data"
+          >
+            <svg 
+              className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} 
+              fill="none" 
+              stroke="currentColor" 
+              viewBox="0 0 24 24"
+            >
+              <path 
+                strokeLinecap="round" 
+                strokeLinejoin="round" 
+                strokeWidth={2} 
+                d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" 
+              />
+            </svg>
+          </button>
+        </div>
         <div className="space-y-2">
           <div className="bg-gray-50 p-3 rounded-lg">
             <h3 className="text-sm text-gray-600 mb-1">Total Value</h3>
@@ -463,7 +477,9 @@ export default function Sidebar() {
 
             <div className={`overflow-hidden transition-all duration-200 ${isPositionsExpanded ? 'max-h-[1000px]' : 'max-h-0'}`}>
               <div className="p-2 pt-0">
-                {filteredPositions.length === 0 ? (
+                {loading ? (
+                  <p className="text-sm text-gray-500">Loading positions...</p>
+                ) : filteredPositions.length === 0 ? (
                   <p className="text-sm text-gray-500">No open positions</p>
                 ) : (
                   filteredPositions.map((wallet) => (
