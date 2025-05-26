@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { makeOkxRequest } from '@/app/utils/okxApi';
 import { validateConfig, OKX_CONFIG } from '@/app/config/okx';
 import { OkxPlatformsResponse, OkxPlatform } from '@/app/utils/okxApi';
-import { fileCache } from '@/app/utils/cache';
+import { fileCache } from '@/app/utils/serverCache';
 
 // CORS headers
 const corsHeaders = {
