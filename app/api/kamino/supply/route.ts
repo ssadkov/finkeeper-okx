@@ -79,7 +79,7 @@ export async function POST(request: Request) {
         console.log('\nReserve Stats:');
         console.log('- Symbol:', reserve.stats.symbol);
         console.log('- Decimals:', reserve.stats.decimals);
-        console.log('- Loan to Value %:', reserve.stats.loanToValuePct);
+        console.log('- Loan to Value %:', reserve.stats.loanToValue);
         console.log('- Borrow Factor:', reserve.stats.borrowFactor);
         
         console.log('\nReserve State:');
