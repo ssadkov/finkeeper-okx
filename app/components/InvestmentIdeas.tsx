@@ -120,7 +120,7 @@ export default function InvestmentIdeas() {
     const [isProcessing, setIsProcessing] = useState(false);
     const connection = new Connection('https://api.mainnet-beta.solana.com', 'confirmed');
     const { platforms, loading: platformsLoading } = usePlatforms();
-    const [activeTab, setActiveTab] = useState(0);
+    const [isRefreshing, setIsRefreshing] = useState(false);
 
     const isTokenInWallet = (tokenSymbol: string) => {
         // Проверяем нативный SOL
@@ -150,8 +150,10 @@ export default function InvestmentIdeas() {
     });
 
     const fetchProducts = async (currentOffset: number) => {
-        setLoading(true);
-        setError(null);
+        if (currentOffset === 0) {
+            setLoading(true);
+            setError(null);
+        }
         
         const requestBody = {
             simplifyInvestType: "101",
@@ -168,7 +170,7 @@ export default function InvestmentIdeas() {
         // Проверяем кэш только для первой загрузки (offset = 0)
         if (currentOffset === 0) {
             const cachedData = getCachedData<{ investments: OkxProduct[], total: string }>('investment_ideas');
-            if (cachedData) {
+            if (cachedData && !isRefreshing) {
                 setProducts(cachedData.investments);
                 setTotal(parseInt(cachedData.total));
                 setLoading(false);
@@ -210,19 +212,23 @@ export default function InvestmentIdeas() {
             console.error('Error details:', err);
             setError(err instanceof Error ? err.message : 'Failed to fetch products');
         } finally {
-            setLoading(false);
+            if (currentOffset === 0) {
+                setLoading(false);
+            }
         }
     };
 
+    // Начальная загрузка данных
     useEffect(() => {
         fetchProducts(0);
     }, []);
 
+    // Загрузка следующей порции данных
     useEffect(() => {
         if (offset > 0 && offset < total) {
             const timer = setTimeout(() => {
                 fetchProducts(offset);
-            }, 1100);
+            }, 1500);
             return () => clearTimeout(timer);
         }
     }, [offset, total]);
@@ -232,7 +238,7 @@ export default function InvestmentIdeas() {
         if (!loading && offset + 10 < total) {
             const timer = setTimeout(() => {
                 setOffset(prev => prev + 10);
-            }, 1100);
+            }, 1500);
             return () => clearTimeout(timer);
         }
     }, [loading, offset, total]);
@@ -311,7 +317,12 @@ export default function InvestmentIdeas() {
             <div className="p-4 flex flex-col items-center justify-center min-h-screen">
                 <div className="text-red-500 text-lg mb-4">Error: {error}</div>
                 <button 
-                    onClick={() => fetchProducts(0)}
+                    onClick={() => {
+                        setIsRefreshing(true);
+                        setOffset(0);
+                        setProducts([]);
+                        fetchProducts(0);
+                    }}
                     className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 transition-colors"
                 >
                     Try Again
@@ -322,41 +333,40 @@ export default function InvestmentIdeas() {
 
     return (
         <div className="h-full flex flex-col">
-            <div className="mb-8 flex justify-between items-center">
+            <div className="mb-7 flex justify-between items-center">
                 <div>
                     <h1 className="text-2xl font-bold mb-4">Investment Ideas</h1>
-                    <div className="flex items-center justify-between mb-4">
-                        <p className="text-gray-600">Top DeFi opportunities on Solana network</p>
-                        <div className="flex items-center space-x-2">
-                            <button
-                                onClick={() => {
-                                    setActiveTab(0);
-                                    fetchProducts(0);
-                                }}
-                                className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-                                    activeTab === 0
-                                        ? 'bg-blue-500 text-white'
-                                        : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                                }`}
-                            >
-                                Lend
-                            </button>
-                            <button
-                                onClick={() => {
-                                    setActiveTab(1);
-                                    fetchProducts(1);
-                                }}
-                                className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-                                    activeTab === 1
-                                        ? 'bg-blue-500 text-white'
-                                        : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                                }`}
-                            >
-                                Swap
-                            </button>
-                        </div>
-                    </div>
+                    <p className="text-gray-600">Top DeFi opportunities on Solana network</p>
                 </div>
+                <button
+                    onClick={() => {
+                        setIsRefreshing(true);
+                        setOffset(0);
+                        setProducts([]);
+                        fetchProducts(0);
+                    }}
+                    disabled={loading}
+                    className={`p-1.5 rounded transition-colors ${
+                        loading 
+                            ? 'bg-gray-300 text-gray-500 cursor-not-allowed' 
+                            : 'bg-blue-500 text-white hover:bg-blue-600'
+                    }`}
+                    title="Refresh investment ideas"
+                >
+                    <svg 
+                        className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} 
+                        fill="none" 
+                        stroke="currentColor" 
+                        viewBox="0 0 24 24"
+                    >
+                        <path 
+                            strokeLinecap="round" 
+                            strokeLinejoin="round" 
+                            strokeWidth={2} 
+                            d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" 
+                        />
+                    </svg>
+                </button>
             </div>
 
             {loading && products.length === 0 && (
@@ -396,7 +406,7 @@ export default function InvestmentIdeas() {
                                                     onChange={(e) => setShowOnlyWalletTokens(e.target.checked)}
                                                     className="form-checkbox h-4 w-4 text-blue-600 rounded"
                                                 />
-                                                <span>Show only wallet tokens</span>
+                                                <span>Only wallet tokens</span>
                                             </label>
                                         </div>
                                     </th>
@@ -413,17 +423,6 @@ export default function InvestmentIdeas() {
                                                 <div className={`text-sm font-medium ${hasWalletTokens(product) ? 'text-green-600' : 'text-gray-900'}`}>
                                                     {product.investmentName}
                                                 </div>
-                                                {product.platformName === 'Kamino' && hasWalletTokens(product) && (
-                                                    <button
-                                                        onClick={() => {
-                                                            setSelectedProduct(product);
-                                                            setIsModalOpen(true);
-                                                        }}
-                                                        className="ml-4 px-3 py-1 text-sm bg-blue-500 text-white rounded hover:bg-blue-600 transition-colors"
-                                                    >
-                                                        Supply
-                                                    </button>
-                                                )}
                                             </div>
                                         </td>
                                         <td className="px-6 py-4 whitespace-nowrap">
