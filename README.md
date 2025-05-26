@@ -1,36 +1,127 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# 🚀 FinKeeper OKX
 
-## Getting Started
+A modern web application for tracking and managing your OKX Exchange portfolio alongside your Solana wallet assets.
 
-First, run the development server:
+## 🌟 Features
 
+- 💼 **Wallet Integration**
+  - Connect and manage Solana wallet
+  - View token balances and values
+  - Real-time price updates
+  - Hide small assets (<$1)
+
+- 💱 **OKX Exchange Integration**
+  - Secure API key connection
+  - Real-time balance tracking
+  - Token price monitoring
+  - Portfolio value calculation
+
+- 📊 **Portfolio Overview**
+  - Total value calculation across all assets
+  - Position tracking
+  - DeFi protocol integration
+  - Small assets filtering
+
+## 🛠 Tech Stack
+
+### Frontend
+- **Framework**: Next.js 14 (App Router)
+- **Language**: TypeScript
+- **Styling**: Tailwind CSS
+- **State Management**: React Context
+- **UI Components**: Custom components with Heroicons
+
+### Backend
+- **API Routes**: Next.js API Routes
+- **Authentication**: Custom HMAC signature implementation
+- **Caching**: Next.js built-in caching
+
+### External APIs
+- **OKX API**
+  - REST API integration
+  - HMAC-SHA256 authentication
+  - Real-time balance fetching
+  - Secure credential storage
+
+- **Price API**
+  - Custom price fetching endpoint
+  - Token price aggregation
+  - Caching implementation
+
+## 🔐 Security Features
+
+- Secure API key storage
+- HMAC signature generation
+- CORS protection
+- Rate limiting
+- Error handling
+
+## 🚀 Getting Started
+
+1. Clone the repository
+```bash
+git clone https://github.com/yourusername/finkeeper-okx.git
+```
+
+2. Install dependencies
+```bash
+npm install
+# or
+yarn install
+```
+
+3. Set up environment variables
+```env
+NEXT_PUBLIC_OKX_API_URL=https://www.okx.com
+NEXT_PUBLIC_PRICE_API_URL=https://finkeeper.pro
+```
+
+4. Run the development server
 ```bash
 npm run dev
 # or
 yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## 📱 Demo
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+Check out the live demo: [FinKeeper OKX](https://finkeeper-okx.vercel.app/)
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## 🔄 OKX API Integration
 
-## Learn More
+The application uses OKX's REST API with the following features:
 
-To learn more about Next.js, take a look at the following resources:
+- **Authentication**: HMAC-SHA256 signature generation
+- **Endpoints**:
+  - `/api/v5/account/balance` - Fetch account balances
+  - `/api/v5/account/positions` - Get current positions
+  - `/api/v5/market/tickers` - Get market data
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+### API Security
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+```typescript
+// Example of HMAC signature generation
+const timestamp = new Date().toISOString();
+const signature = createSignature(
+  timestamp,
+  'GET',
+  '/api/v5/account/balance',
+  '',
+  apiSecret
+);
+```
 
-## Deploy on Vercel
+## 🤝 Contributing
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+Contributions are welcome! Please feel free to submit a Pull Request.
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## 📝 License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+## 🙏 Acknowledgments
+
+- OKX API Documentation
+- Next.js Team
+- Solana Web3.js
+- Tailwind CSS
