@@ -25,15 +25,23 @@ export function OkxProvider({ children }: { children: React.ReactNode }) {
     const [totalBalance, setTotalBalance] = useState(0);
 
     const fetchBalances = async () => {
+        console.log('[OKX Client] Starting balance fetch');
         try {
             const apiKey = localStorage.getItem('okx_api_key');
             const apiSecret = localStorage.getItem('okx_api_secret');
             const passphrase = localStorage.getItem('okx_passphrase');
 
+            console.log('[OKX Client] Credentials check:', {
+                hasApiKey: !!apiKey,
+                hasApiSecret: !!apiSecret,
+                hasPassphrase: !!passphrase
+            });
+
             if (!apiKey || !apiSecret || !passphrase) {
                 throw new Error('OKX API credentials not found');
             }
 
+            console.log('[OKX Client] Making request to local API');
             const response = await fetch('/api/okx/balances', {
                 method: 'GET',
                 headers: {
@@ -43,7 +51,15 @@ export function OkxProvider({ children }: { children: React.ReactNode }) {
                 },
             });
 
+            console.log('[OKX Client] Response status:', response.status);
             const data = await response.json();
+            console.log('[OKX Client] Response data:', {
+                code: data.code,
+                hasData: !!data.data,
+                dataLength: data.data?.length,
+                error: data.error
+            });
+
             if (data.code === '0' && Array.isArray(data.data)) {
                 setBalances(data.data);
                 // Подсчитываем общий баланс в USDT
@@ -55,22 +71,32 @@ export function OkxProvider({ children }: { children: React.ReactNode }) {
                 }, 0);
                 setTotalBalance(total);
                 setIsConnected(true);
+                console.log('[OKX Client] Successfully updated balances');
             } else {
-                throw new Error(data.msg || 'Failed to fetch balances');
+                throw new Error(data.msg || data.error || 'Failed to fetch balances');
             }
         } catch (error) {
-            console.error('Error fetching OKX balances:', error);
+            console.error('[OKX Client] Error fetching OKX balances:', error);
             setIsConnected(false);
             setBalances([]);
             setTotalBalance(0);
+            throw error; // Пробрасываем ошибку дальше для обработки
         }
     };
 
     const connect = async () => {
-        await fetchBalances();
+        console.log('[OKX Client] Starting connection');
+        try {
+            await fetchBalances();
+            console.log('[OKX Client] Connection successful');
+        } catch (error) {
+            console.error('[OKX Client] Connection failed:', error);
+            throw error;
+        }
     };
 
     const disconnect = () => {
+        console.log('[OKX Client] Disconnecting');
         localStorage.removeItem('okx_api_key');
         localStorage.removeItem('okx_api_secret');
         localStorage.removeItem('okx_passphrase');
@@ -83,7 +109,10 @@ export function OkxProvider({ children }: { children: React.ReactNode }) {
     useEffect(() => {
         const apiKey = localStorage.getItem('okx_api_key');
         if (apiKey) {
-            fetchBalances();
+            console.log('[OKX Client] Found stored API key, attempting to connect');
+            fetchBalances().catch(error => {
+                console.error('[OKX Client] Auto-connect failed:', error);
+            });
         }
     }, []);
 
