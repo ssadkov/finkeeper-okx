@@ -102,10 +102,10 @@ export default function InvestmentIdeas() {
     const [offset, setOffset] = useState(0);
     const [tokenFilter, setTokenFilter] = useState('');
     const [showOnlyWalletTokens, setShowOnlyWalletTokens] = useState(false);
-    const { walletTokens, publicKey } = useWalletContext();
+    const { walletTokens, publicKey: contextPublicKey } = useWalletContext();
     const [selectedProduct, setSelectedProduct] = useState<OkxProduct | null>(null);
     const [isModalOpen, setIsModalOpen] = useState(false);
-    const { sendTransaction, signMessage } = useWallet();
+    const { sendTransaction, signMessage, publicKey } = useWallet();
     const { setVisible } = useWalletModal();
     const [isProcessing, setIsProcessing] = useState(false);
     const connection = new Connection('https://api.mainnet-beta.solana.com', 'confirmed');
@@ -303,7 +303,11 @@ export default function InvestmentIdeas() {
                 <button
                     onClick={handleSignMessage}
                     disabled={!publicKey}
-                    className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 disabled:bg-gray-300 disabled:cursor-not-allowed"
+                    className={`px-4 py-2 rounded transition-colors ${
+                        publicKey 
+                            ? 'bg-blue-500 text-white hover:bg-blue-600' 
+                            : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                    }`}
                 >
                     SignMessage
                 </button>
