@@ -123,7 +123,6 @@ export default function Sidebar() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [hideSmallAssets, setHideSmallAssets] = useState(true);
-  const [isSidebarExpanded, setIsSidebarExpanded] = useState(true);
   const [isWalletExpanded, setIsWalletExpanded] = useState(true);
   const [isPositionsExpanded, setIsPositionsExpanded] = useState(false);
   const [isOkxExpanded, setIsOkxExpanded] = useState(true);
@@ -133,14 +132,10 @@ export default function Sidebar() {
 
   // Инициализация состояний из localStorage после монтирования
   useEffect(() => {
-    const savedSidebarExpanded = localStorage.getItem('sidebarExpanded');
     const savedWalletExpanded = localStorage.getItem('walletExpanded');
     const savedPositionsExpanded = localStorage.getItem('positionsExpanded');
     const savedOkxExpanded = localStorage.getItem('okxExpanded');
     
-    if (savedSidebarExpanded) {
-      setIsSidebarExpanded(JSON.parse(savedSidebarExpanded));
-    }
     if (savedWalletExpanded) {
       setIsWalletExpanded(JSON.parse(savedWalletExpanded));
     }
@@ -151,12 +146,6 @@ export default function Sidebar() {
       setIsOkxExpanded(JSON.parse(savedOkxExpanded));
     }
   }, []);
-
-  const handleSidebarToggle = () => {
-    const newState = !isSidebarExpanded;
-    setIsSidebarExpanded(newState);
-    localStorage.setItem('sidebarExpanded', JSON.stringify(newState));
-  };
 
   const handleWalletToggle = () => {
     const newState = !isWalletExpanded;
@@ -320,26 +309,12 @@ export default function Sidebar() {
   }, 0);
 
   return (
-    <div className={`bg-white border-r border-gray-200 h-screen flex flex-col transition-all duration-300 ${isSidebarExpanded ? 'w-80' : 'w-20'}`}>
+    <div className="bg-white border-r border-gray-200 h-screen flex flex-col w-80">
       <div className="flex-1 overflow-y-auto">
         <div className="px-4 py-4">
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-lg font-semibold">Wallet Overview</h2>
             <div className="flex items-center space-x-2">
-              <button
-                onClick={handleSidebarToggle}
-                className="p-1.5 rounded hover:bg-gray-100 transition-colors"
-                title={isSidebarExpanded ? "Collapse sidebar" : "Expand sidebar"}
-              >
-                <svg
-                  className={`w-4 h-4 transform transition-transform ${isSidebarExpanded ? 'rotate-180' : ''}`}
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 19l-7-7 7-7m8 14l-7-7 7-7" />
-                </svg>
-              </button>
               <button
                 onClick={fetchWalletData}
                 disabled={loading}
