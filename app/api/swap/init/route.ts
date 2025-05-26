@@ -18,7 +18,7 @@ export async function POST(request: Request) {
                 walletAddress: walletAddress || '',
                 computeUnits: 300000,
                 maxRetries: 3
-            }
+            } as any
         });
 
         // Test API authentication
