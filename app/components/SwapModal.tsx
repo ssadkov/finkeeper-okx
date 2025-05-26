@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useWallet } from '@solana/wallet-adapter-react';
-import { Connection } from '@solana/web3.js';
+import { Connection, PublicKey, Transaction, VersionedTransaction, SendOptions, TransactionSignature } from '@solana/web3.js';
 import { OKXDexClient } from '@okx-dex/okx-dex-sdk';
 import { useWalletContext } from '../context/WalletContext';
 
@@ -88,7 +88,7 @@ export default function SwapModal({ isOpen, onClose, fromToken, toToken }: SwapM
 
             console.log('%c[DEBUG] Swap result:', 'background: #222; color: #bada55', result);
             
-            if (result?.data?.[0]) {
+            if (result?.success) {
                 setSwapStatus('Swap successful!');
                 setTimeout(() => onClose(), 2000);
             } else {
@@ -141,15 +141,35 @@ export default function SwapModal({ isOpen, onClose, fromToken, toToken }: SwapM
                 );
 
                 try {
+                    const wallet = {
+                        publicKey,
+                        connection,
+                        signTransaction: signTransaction!,
+                        signAllTransactions: async <T extends Transaction | VersionedTransaction>(transactions: T[]): Promise<T[]> => {
+                            const signedTransactions = [];
+                            for (const transaction of transactions) {
+                                const signed = await signTransaction!(transaction);
+                                signedTransactions.push(signed as T);
+                            }
+                            return signedTransactions;
+                        },
+                        signAndSendTransaction: async (transaction: Transaction | VersionedTransaction, options?: SendOptions) => {
+                            const signed = await signTransaction!(transaction);
+                            const signature = await connection.sendRawTransaction(signed.serialize(), options);
+                            return { signature };
+                        },
+                        signMessage: async (message: Uint8Array) => {
+                            throw new Error('Message signing not supported');
+                        }
+                    };
+
                     const client = new OKXDexClient({
                         apiKey: process.env.NEXT_PUBLIC_OKX_API_KEY!,
                         secretKey: process.env.NEXT_PUBLIC_OKX_SECRET_KEY!,
                         apiPassphrase: process.env.NEXT_PUBLIC_OKX_PASSPHRASE!,
                         projectId: process.env.NEXT_PUBLIC_OKX_PROJECT_ID!,
                         solana: {
-                            connection,
-                            walletAddress: publicKey.toString(),
-                            confirmTransactionInitialTimeout: 5000,
+                            wallet,
                             computeUnits: 300000,
                             maxRetries: 3
                         }
