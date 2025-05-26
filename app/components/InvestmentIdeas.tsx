@@ -517,8 +517,7 @@ export default function InvestmentIdeas() {
                 onClose={() => setIsSwapModalOpen(false)}
                 fromToken={{
                     symbol: 'SOL',
-                    address: '11111111111111111111111111111111',
-                    balance: 1.0 // TODO: Get actual balance
+                    address: '11111111111111111111111111111111'
                 }}
                 toToken={{
                     symbol: 'USDC',
