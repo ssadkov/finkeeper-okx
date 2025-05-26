@@ -129,7 +129,8 @@ export default function InvestmentIdeas() {
         }
         // Проверяем остальные токены
         return walletTokens?.some(token => 
-            token.symbol.toLowerCase() === tokenSymbol.toLowerCase()
+            token.symbol.toUpperCase() === tokenSymbol.toUpperCase() && 
+            parseFloat(token.balance) > 0
         );
     };
 
