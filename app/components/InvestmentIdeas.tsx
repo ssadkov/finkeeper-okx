@@ -8,6 +8,7 @@ import { Connection } from '@solana/web3.js';
 import { usePlatforms } from '../hooks/usePlatforms';
 import { useWalletModal } from '@solana/wallet-adapter-react-ui';
 import SwapModal from './SwapModal';
+import { getCachedData, setCachedData } from '../utils/cache';
 
 interface SupplyModalProps {
     isOpen: boolean;
@@ -155,6 +156,17 @@ export default function InvestmentIdeas() {
                 }]
             }
         };
+
+        // Проверяем кэш только для первой загрузки (offset = 0)
+        if (currentOffset === 0) {
+            const cachedData = getCachedData<{ investments: OkxProduct[], total: string }>('investment_ideas');
+            if (cachedData) {
+                setProducts(cachedData.investments);
+                setTotal(parseInt(cachedData.total));
+                setLoading(false);
+                return;
+            }
+        }
         
         try {
             const response = await fetch('/api/defi/products', {
@@ -178,6 +190,11 @@ export default function InvestmentIdeas() {
             if (currentOffset === 0) {
                 setTotal(parseInt(data.data.total));
                 setProducts(data.data.investments);
+                // Кэшируем данные только для первой загрузки
+                setCachedData('investment_ideas', {
+                    investments: data.data.investments,
+                    total: data.data.total
+                });
             } else {
                 setProducts(prev => [...prev, ...data.data.investments]);
             }

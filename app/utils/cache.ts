@@ -1,83 +1,42 @@
-import fs from 'fs';
-import path from 'path';
-
-const CACHE_DIR = path.join(process.cwd(), '.cache');
-
-// Ensure cache directory exists
-if (!fs.existsSync(CACHE_DIR)) {
-    fs.mkdirSync(CACHE_DIR, { recursive: true });
-}
-
 interface CacheData<T> {
     data: T;
     timestamp: number;
 }
 
-export class FileCache {
-    private cacheDir: string;
-    private defaultTTL: number;
+const CACHE_EXPIRATION = 60 * 60 * 1000; // 1 hour in milliseconds
 
-    constructor(cacheDir: string = CACHE_DIR, defaultTTL: number = 5 * 60 * 1000) {
-        this.cacheDir = cacheDir;
-        this.defaultTTL = defaultTTL;
-    }
+export const getCachedData = <T>(key: string): T | null => {
+    if (typeof window === 'undefined') return null;
+    
+    try {
+        const cached = localStorage.getItem(key);
+        if (!cached) return null;
 
-    private getCachePath(key: string): string {
-        return path.join(this.cacheDir, `${key}.json`);
-    }
+        const { data, timestamp }: CacheData<T> = JSON.parse(cached);
+        const now = Date.now();
 
-    async get<T>(key: string): Promise<T | null> {
-        try {
-            const cachePath = this.getCachePath(key);
-            if (!fs.existsSync(cachePath)) {
-                return null;
-            }
-
-            const fileContent = await fs.promises.readFile(cachePath, 'utf-8');
-            const cacheData: CacheData<T> = JSON.parse(fileContent);
-
-            // Check if cache is expired
-            if (Date.now() - cacheData.timestamp > this.defaultTTL) {
-                await this.delete(key);
-                return null;
-            }
-
-            return cacheData.data;
-        } catch (error) {
-            console.error('Cache read error:', error);
+        if (now - timestamp > CACHE_EXPIRATION) {
+            localStorage.removeItem(key);
             return null;
         }
+
+        return data;
+    } catch (error) {
+        console.error('Error reading from cache:', error);
+        return null;
     }
+};
 
-    async set<T>(key: string, data: T): Promise<void> {
-        try {
-            const cachePath = this.getCachePath(key);
-            const cacheData: CacheData<T> = {
-                data,
-                timestamp: Date.now()
-            };
-
-            await fs.promises.writeFile(
-                cachePath,
-                JSON.stringify(cacheData, null, 2),
-                'utf-8'
-            );
-        } catch (error) {
-            console.error('Cache write error:', error);
-        }
+export const setCachedData = <T>(key: string, data: T): void => {
+    if (typeof window === 'undefined') return;
+    
+    try {
+        const cacheData: CacheData<T> = {
+            data,
+            timestamp: Date.now()
+        };
+        localStorage.setItem(key, JSON.stringify(cacheData));
+    } catch (error) {
+        console.error('Error writing to cache:', error);
     }
-
-    async delete(key: string): Promise<void> {
-        try {
-            const cachePath = this.getCachePath(key);
-            if (fs.existsSync(cachePath)) {
-                await fs.promises.unlink(cachePath);
-            }
-        } catch (error) {
-            console.error('Cache delete error:', error);
-        }
-    }
-}
-
-// Create a singleton instance
-export const fileCache = new FileCache(); 
+}; 

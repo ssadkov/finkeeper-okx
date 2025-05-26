@@ -345,6 +345,13 @@ export default function Sidebar() {
     })
   })).filter(wallet => wallet.platformList && wallet.platformList.length > 0);
 
+  // Подсчет общей стоимости всех позиций
+  const totalPositionsValue = positions.reduce((sum, wallet) => {
+    return sum + wallet.platformList.reduce((platformSum, platform) => {
+      return platformSum + Number(platform.currencyAmount);
+    }, 0);
+  }, 0);
+
   return (
     <div className="w-80 bg-white shadow-lg p-4 flex flex-col h-full">
       <div className="flex-grow overflow-y-auto pr-2">
@@ -463,7 +470,12 @@ export default function Sidebar() {
               className="w-full p-2 flex items-center justify-between hover:bg-gray-100 transition-colors rounded"
             >
               <div className="flex items-center space-x-2">
-                <span className="text-sm font-medium">User Positions</span>
+                <span className="text-sm font-medium">Positions</span>
+                {!loading && !error && (
+                  <span className="text-sm text-gray-500">
+                    ${totalPositionsValue.toFixed(2)}
+                  </span>
+                )}
               </div>
               <svg
                 className={`w-4 h-4 transform transition-transform ${isPositionsExpanded ? 'rotate-180' : ''}`}
