@@ -129,6 +129,12 @@ export default function Sidebar() {
   const [isOkxModalOpen, setIsOkxModalOpen] = useState(false);
   const [loadingPositions, setLoadingPositions] = useState<Record<string, boolean>>({});
   const [loadingOkx, setLoadingOkx] = useState(false);
+  const [okxTokenPrices, setOkxTokenPrices] = useState<Record<string, number>>({});
+  const [lastPriceUpdate, setLastPriceUpdate] = useState<number>(0);
+  const [isUpdatingPrices, setIsUpdatingPrices] = useState(false);
+  const PRICE_UPDATE_INTERVAL = 10 * 1000; // 10 секунд вместо 5 минут
+  const MAX_RETRIES = 3;
+  const RETRY_DELAY = 100; // 100мс между запросами вместо 1 секунды
 
   // Инициализация состояний из localStorage после монтирования
   useEffect(() => {
@@ -206,6 +212,87 @@ export default function Sidebar() {
     }
   }, [publicKey]);
 
+  // Функция для получения цены токена с повторными попытками
+  const fetchTokenPrice = async (symbol: string, retryCount = 0): Promise<number> => {
+    try {
+      const response = await fetch(`/api/price?symbol=${symbol}`, {
+        method: 'GET',
+        headers: {
+          'Accept': 'text/plain',
+        },
+        cache: 'no-cache'
+      });
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      
+      const priceText = await response.text();
+      const price = parseFloat(priceText);
+      
+      if (isNaN(price)) {
+        console.warn(`Invalid price received for ${symbol}: ${priceText}`);
+        return 0;
+      }
+      
+      return price;
+    } catch (error) {
+      if (retryCount < MAX_RETRIES) {
+        console.warn(`Retrying fetch price for ${symbol}, attempt ${retryCount + 1} of ${MAX_RETRIES}`);
+        await new Promise(resolve => setTimeout(resolve, RETRY_DELAY));
+        return fetchTokenPrice(symbol, retryCount + 1);
+      }
+      console.warn(`Failed to fetch price for ${symbol} after ${MAX_RETRIES} attempts:`, error);
+      return 0;
+    }
+  };
+
+  // Обновляем цены токенов только если прошло достаточно времени с последнего обновления
+  const updateTokenPrices = async () => {
+    if (isUpdatingPrices) return;
+    
+    const now = Date.now();
+    if (now - lastPriceUpdate < PRICE_UPDATE_INTERVAL) {
+      return;
+    }
+
+    if (!okxBalances || !okxBalances.length) return;
+    
+    try {
+      setIsUpdatingPrices(true);
+      const prices: Record<string, number> = {};
+      
+      // Обрабатываем токены последовательно, но с меньшей задержкой
+      for (const balance of okxBalances) {
+        if (balance && balance.ccy && parseFloat(balance.bal) > 0) {
+          const price = await fetchTokenPrice(balance.ccy);
+          if (price > 0) {
+            prices[balance.ccy] = price;
+          }
+          // Уменьшаем задержку между запросами до 100мс
+          await new Promise(resolve => setTimeout(resolve, 100));
+        }
+      }
+      
+      if (Object.keys(prices).length > 0) {
+        setOkxTokenPrices(prices);
+        setLastPriceUpdate(now);
+      }
+    } catch (error) {
+      console.error('Error updating token prices:', error);
+    } finally {
+      setIsUpdatingPrices(false);
+    }
+  };
+
+  // Обновляем цены только при подключении OKX
+  useEffect(() => {
+    if (isConnected && okxBalances && okxBalances.length > 0 && !isUpdatingPrices) {
+      console.log('OKX connected, updating prices...');
+      updateTokenPrices();
+    }
+  }, [isConnected]);
+
   const fetchWalletData = async () => {
     if (!publicKey) return;
     
@@ -268,6 +355,20 @@ export default function Sidebar() {
         console.error('Positions API Error:', positionsData);
       }
 
+      // Обновляем данные OKX если подключены
+      if (isConnected && !isUpdatingPrices) {
+        console.log('Updating OKX data...');
+        await connect();
+        // Даем время на обновление балансов
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        if (okxBalances && okxBalances.length > 0) {
+          console.log('OKX balances updated:', okxBalances);
+          await updateTokenPrices();
+        } else {
+          console.warn('No OKX balances available after update');
+        }
+      }
+
     } catch (err) {
       console.error('Error fetching wallet data:', err);
       setError(err instanceof Error ? err.message : 'Failed to fetch wallet data');
@@ -315,6 +416,21 @@ export default function Sidebar() {
     }, 0);
   }, 0);
 
+  // Подсчет общей стоимости OKX токенов
+  const okxTotalValue = okxBalances.reduce((sum, balance) => {
+    if (!balance || !balance.ccy || !balance.bal) return sum;
+    const price = okxTokenPrices[balance.ccy] || 0;
+    return sum + (parseFloat(balance.bal) * price);
+  }, 0);
+
+  // Подсчет суммы скрытых активов OKX
+  const okxHiddenValue = hideSmallAssets ? okxBalances.reduce((sum, balance) => {
+    if (!balance || !balance.ccy || !balance.bal) return sum;
+    const price = okxTokenPrices[balance.ccy] || 0;
+    const value = parseFloat(balance.bal) * price;
+    return sum + (value < 1 ? value : 0);
+  }, 0) : 0;
+
   return (
     <div className="bg-white border-r border-gray-200 h-screen flex flex-col w-80">
       <div className="flex-1 overflow-y-auto">
@@ -357,7 +473,14 @@ export default function Sidebar() {
               ) : error ? (
                 <p className="text-red-500">{error}</p>
               ) : (
-                <p className="text-xl font-bold">${Number(totalValue).toFixed(2)}</p>
+                <div>
+                  <p className="text-xl font-bold">${(totalTokensValue + okxTotalValue + totalPositionsValue).toFixed(2)}</p>
+                  {hideSmallAssets && (okxHiddenValue > 0 || totalTokensValue > filteredTokensValue) && (
+                    <p className="text-xs text-gray-500 mt-1">
+                      Hidden: ${(okxHiddenValue + (totalTokensValue - filteredTokensValue)).toFixed(2)}
+                    </p>
+                  )}
+                </div>
               )}
             </div>
 
@@ -570,7 +693,7 @@ export default function Sidebar() {
                   <span className="text-sm font-medium">OKX Exchange</span>
                   {isConnected && (
                     <span className="text-sm text-gray-500">
-                      ${okxTotalBalance.toFixed(2)}
+                      ${okxTotalValue.toFixed(2)}
                     </span>
                   )}
                 </div>
@@ -599,18 +722,49 @@ export default function Sidebar() {
                   ) : (
                     <div className="space-y-1">
                       {okxBalances
-                        .filter(balance => parseFloat(balance.bal) > 0)
-                        .sort((a, b) => parseFloat(b.bal) - parseFloat(a.bal))
-                        .map((balance) => (
-                          <div key={balance.ccy} className="flex items-center justify-between">
-                            <div>
-                              <p className="text-sm font-medium">{balance.ccy}</p>
+                        .filter(balance => {
+                          if (!hideSmallAssets) return parseFloat(balance.bal) > 0;
+                          const price = okxTokenPrices[balance.ccy] || 0;
+                          const value = parseFloat(balance.bal) * price;
+                          return value >= 1;
+                        })
+                        .sort((a, b) => {
+                          const priceA = okxTokenPrices[a.ccy] || 0;
+                          const priceB = okxTokenPrices[b.ccy] || 0;
+                          const valueA = parseFloat(a.bal) * priceA;
+                          const valueB = parseFloat(b.bal) * priceB;
+                          return valueB - valueA;
+                        })
+                        .map((balance) => {
+                          const price = okxTokenPrices[balance.ccy] || 0;
+                          const value = parseFloat(balance.bal) * price;
+                          return (
+                            <div key={balance.ccy} className="flex items-center justify-between">
+                              <div>
+                                <p className="text-sm font-medium">{balance.ccy}</p>
+                              </div>
+                              <div className="text-right">
+                                <p className="text-sm font-medium">{parseFloat(balance.bal).toFixed(8)}</p>
+                                {price > 0 && (
+                                  <p className="text-xs text-gray-500">${value.toFixed(2)}</p>
+                                )}
+                              </div>
                             </div>
-                            <div className="text-right">
-                              <p className="text-sm font-medium">{parseFloat(balance.bal).toFixed(8)}</p>
-                            </div>
-                          </div>
-                        ))}
+                          );
+                        })}
+                      {hideSmallAssets && okxBalances.some(balance => {
+                        const price = okxTokenPrices[balance.ccy] || 0;
+                        const value = parseFloat(balance.bal) * price;
+                        return value < 1;
+                      }) && (
+                        <p className="text-xs text-gray-500 mt-1">
+                          Hidden: ${okxBalances.reduce((sum, balance) => {
+                            const price = okxTokenPrices[balance.ccy] || 0;
+                            const value = parseFloat(balance.bal) * price;
+                            return sum + (value < 1 ? value : 0);
+                          }, 0).toFixed(2)}
+                        </p>
+                      )}
                     </div>
                   )}
                 </div>
