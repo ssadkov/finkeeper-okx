@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { OkxProduct } from '../utils/okxApi';
 import { useWalletContext } from '../context/WalletContext';
-import { useWallet } from '@solana/wallet-adapter-react';
+import { useWallet as useSolanaWallet } from '@solana/wallet-adapter-react';
 import { Connection } from '@solana/web3.js';
 import { usePlatforms } from '../hooks/usePlatforms';
 import { useWalletModal } from '@solana/wallet-adapter-react-ui';
@@ -96,9 +96,15 @@ function SupplyModal({ isOpen, onClose, product, maxAmount, onSupply, isProcessi
     );
 }
 
+interface TokenInfo {
+    symbol: string;
+    balance: number;
+    address: string;
+}
+
 export default function InvestmentIdeas() {
     const [products, setProducts] = useState<OkxProduct[]>([]);
-    const [loading, setLoading] = useState(false);
+    const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [total, setTotal] = useState<number>(0);
     const [offset, setOffset] = useState(0);
@@ -108,7 +114,7 @@ export default function InvestmentIdeas() {
     const [selectedProduct, setSelectedProduct] = useState<OkxProduct | null>(null);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [isSwapModalOpen, setIsSwapModalOpen] = useState(false);
-    const { sendTransaction, signMessage, publicKey } = useWallet();
+    const { sendTransaction, signMessage, publicKey } = useSolanaWallet();
     const { setVisible } = useWalletModal();
     const [isProcessing, setIsProcessing] = useState(false);
     const connection = new Connection('https://api.mainnet-beta.solana.com', 'confirmed');

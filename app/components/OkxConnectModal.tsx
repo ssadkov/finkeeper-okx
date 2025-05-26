@@ -20,7 +20,7 @@ export default function OkxConnectModal({ isOpen, onClose }: OkxConnectModalProp
             const time = new Date().toISOString();
             
             // Создаем подпись для FUND баланса
-            const fundUrl = 'https://www.okx.cab/api/v5/asset/balances';
+            const fundUrl = '/api/v5/asset/balances';
             const fundMessage = time + 'GET' + fundUrl;
             const fundEncoder = new TextEncoder();
             const fundKey = await crypto.subtle.importKey(
@@ -38,7 +38,7 @@ export default function OkxConnectModal({ isOpen, onClose }: OkxConnectModalProp
             const fundSign = btoa(String.fromCharCode(...new Uint8Array(fundSignature)));
 
             // Создаем подпись для UNIFIED баланса
-            const unifiedUrl = 'https://www.okx.cab/api/v5/account/balance';
+            const unifiedUrl = '/api/v5/account/balance';
             const unifiedMessage = time + 'GET' + unifiedUrl;
             const unifiedEncoder = new TextEncoder();
             const unifiedKey = await crypto.subtle.importKey(
@@ -64,7 +64,7 @@ export default function OkxConnectModal({ isOpen, onClose }: OkxConnectModalProp
             };
 
             // Запрос FUND баланса
-            const fundResponse = await fetch(fundUrl, {
+            const fundResponse = await fetch('https://www.okx.com' + fundUrl, {
                 method: 'GET',
                 headers: {
                     ...headers,
@@ -75,7 +75,7 @@ export default function OkxConnectModal({ isOpen, onClose }: OkxConnectModalProp
             console.log('FUND Balance Response:', fundData);
 
             // Запрос UNIFIED баланса
-            const unifiedResponse = await fetch(unifiedUrl, {
+            const unifiedResponse = await fetch('https://www.okx.com' + unifiedUrl, {
                 method: 'GET',
                 headers: {
                     ...headers,
@@ -85,9 +85,18 @@ export default function OkxConnectModal({ isOpen, onClose }: OkxConnectModalProp
             const unifiedData = await unifiedResponse.json();
             console.log('UNIFIED Balance Response:', unifiedData);
 
-            onClose();
+            if (fundData.code === '0' && unifiedData.code === '0') {
+                // Сохраняем API ключи в localStorage
+                localStorage.setItem('okx_api_key', apiKey);
+                localStorage.setItem('okx_api_secret', apiSecret);
+                localStorage.setItem('okx_passphrase', passphrase);
+                onClose();
+            } else {
+                throw new Error(fundData.msg || unifiedData.msg || 'Failed to connect to OKX');
+            }
         } catch (error) {
             console.error('Error connecting to OKX:', error);
+            alert(error instanceof Error ? error.message : 'Failed to connect to OKX');
         } finally {
             setIsLoading(false);
         }

@@ -10,6 +10,7 @@
   },
   "dependencies": {
     "@coral-xyz/anchor": "^0.28.0",
+    "@heroicons/react": "^2.2.0",
     "@kamino-finance/klend-sdk": "^3.0.1",
     "@mrgnlabs/marginfi-client-v2": "^6.0.2",
     "@mrgnlabs/mrgn-common": "^2.0.2",

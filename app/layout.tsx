@@ -4,6 +4,7 @@ import SolanaWalletConnect from './components/SolanaWalletConnect';
 import Sidebar from './components/Sidebar';
 import { WalletProvider } from './context/WalletContext';
 import { WalletProvider as CustomWalletProvider } from './components/WalletProvider';
+import { OkxProvider } from './context/OkxContext';
 import TopPanel from './components/TopPanel';
 
 const geistSans = Geist({
@@ -29,15 +30,17 @@ export default function RootLayout({
       >
         <WalletProvider>
           <CustomWalletProvider>
-            <div className="h-screen flex flex-col bg-gray-50">
-              <TopPanel />
-              <div className="flex-1 flex overflow-hidden">
-                <Sidebar />
-                <main className="flex-1 flex flex-col overflow-hidden">
-                  {children}
-                </main>
+            <OkxProvider>
+              <div className="h-screen flex flex-col bg-gray-50">
+                <TopPanel />
+                <div className="flex-1 flex overflow-hidden">
+                  <Sidebar />
+                  <main className="flex-1 flex flex-col overflow-hidden">
+                    {children}
+                  </main>
+                </div>
               </div>
-            </div>
+            </OkxProvider>
           </CustomWalletProvider>
         </WalletProvider>
       </body>

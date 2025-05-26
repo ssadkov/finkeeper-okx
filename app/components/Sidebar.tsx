@@ -3,6 +3,9 @@
 import { useEffect, useState } from 'react';
 import { useWalletContext } from '../context/WalletContext';
 import { createSignature } from '../utils/okxApi';
+import { useOkx } from '../context/OkxContext';
+import OkxConnectModal from './OkxConnectModal';
+import { ChevronDownIcon } from '@heroicons/react/24/outline';
 
 interface TotalValueResponse {
   code: string;
@@ -103,8 +106,16 @@ interface PositionDetailsResponse {
   };
 }
 
+interface OkxBalance {
+    availBal: string;
+    bal: string;
+    ccy: string;
+    frozenBal: string;
+}
+
 export default function Sidebar() {
   const { publicKey, setWalletTokens } = useWalletContext();
+  const { isConnected, balances: okxBalances, totalBalance: okxTotalBalance } = useOkx();
   const [totalValue, setTotalValue] = useState<string>('0');
   const [balances, setBalances] = useState<TokenAsset[]>([]);
   const [positions, setPositions] = useState<Position[]>([]);
@@ -112,26 +123,44 @@ export default function Sidebar() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [hideSmallAssets, setHideSmallAssets] = useState(true);
-  const [isExpanded, setIsExpanded] = useState(false);
+  const [isSidebarExpanded, setIsSidebarExpanded] = useState(true);
+  const [isWalletExpanded, setIsWalletExpanded] = useState(true);
   const [isPositionsExpanded, setIsPositionsExpanded] = useState(false);
+  const [isOkxExpanded, setIsOkxExpanded] = useState(true);
+  const [isOkxModalOpen, setIsOkxModalOpen] = useState(false);
   const [loadingPositions, setLoadingPositions] = useState<Record<string, boolean>>({});
+  const [loadingOkx, setLoadingOkx] = useState(false);
 
   // Инициализация состояний из localStorage после монтирования
   useEffect(() => {
+    const savedSidebarExpanded = localStorage.getItem('sidebarExpanded');
     const savedWalletExpanded = localStorage.getItem('walletExpanded');
     const savedPositionsExpanded = localStorage.getItem('positionsExpanded');
+    const savedOkxExpanded = localStorage.getItem('okxExpanded');
     
+    if (savedSidebarExpanded) {
+      setIsSidebarExpanded(JSON.parse(savedSidebarExpanded));
+    }
     if (savedWalletExpanded) {
-      setIsExpanded(JSON.parse(savedWalletExpanded));
+      setIsWalletExpanded(JSON.parse(savedWalletExpanded));
     }
     if (savedPositionsExpanded) {
       setIsPositionsExpanded(JSON.parse(savedPositionsExpanded));
     }
+    if (savedOkxExpanded) {
+      setIsOkxExpanded(JSON.parse(savedOkxExpanded));
+    }
   }, []);
 
+  const handleSidebarToggle = () => {
+    const newState = !isSidebarExpanded;
+    setIsSidebarExpanded(newState);
+    localStorage.setItem('sidebarExpanded', JSON.stringify(newState));
+  };
+
   const handleWalletToggle = () => {
-    const newState = !isExpanded;
-    setIsExpanded(newState);
+    const newState = !isWalletExpanded;
+    setIsWalletExpanded(newState);
     localStorage.setItem('walletExpanded', JSON.stringify(newState));
   };
 
@@ -139,6 +168,12 @@ export default function Sidebar() {
     const newState = !isPositionsExpanded;
     setIsPositionsExpanded(newState);
     localStorage.setItem('positionsExpanded', JSON.stringify(newState));
+  };
+
+  const handleOkxToggle = () => {
+    const newState = !isOkxExpanded;
+    setIsOkxExpanded(newState);
+    localStorage.setItem('okxExpanded', String(newState));
   };
 
   const handleProtocolClick = async (platformId: string) => {
@@ -160,14 +195,6 @@ export default function Sidebar() {
       setLoadingPositions(prev => ({ ...prev, [platformId]: false }));
     }
   };
-
-  useEffect(() => {
-    console.log('Wallet expanded state changed:', isExpanded);
-  }, [isExpanded]);
-
-  useEffect(() => {
-    console.log('Positions expanded state changed:', isPositionsExpanded);
-  }, [isPositionsExpanded]);
 
   useEffect(() => {
     if (publicKey) {
@@ -253,66 +280,6 @@ export default function Sidebar() {
     }
   };
 
-  // Эффект для получения позиций
-  useEffect(() => {
-    const fetchPositions = async () => {
-      if (!publicKey) {
-        console.log('No public key available for positions');
-        return;
-      }
-
-      try {
-        console.log('Fetching positions for address:', publicKey.toString());
-        
-        const requestBody = {
-          walletAddressList: [{
-            chainId: 501, // Solana
-            walletAddress: publicKey.toString()
-          }]
-        };
-        console.log('Positions request body:', requestBody);
-
-        const response = await fetch('/api/defi/positions', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify(requestBody)
-        });
-
-        console.log('Positions response status:', response.status);
-        const data: PositionsResponse = await response.json();
-        console.log('Positions Response:', data);
-
-        if (data.code === 0 && data.data?.walletIdPlatformList) {
-          console.log('Raw positions data:', data.data.walletIdPlatformList);
-          // Фильтруем только те записи, у которых есть platformList
-          const validPositions = data.data.walletIdPlatformList.filter(
-            (wallet) => Array.isArray(wallet.platformList) && wallet.platformList.length > 0
-          );
-          console.log('Filtered positions:', validPositions);
-          setPositions(validPositions);
-        } else {
-          console.error('Positions API Error:', {
-            code: data.code,
-            msg: data.msg,
-            error_code: data.error_code,
-            error_message: data.error_message,
-            detailMsg: data.detailMsg,
-            data: data.data
-          });
-        }
-      } catch (err) {
-        console.error('Positions Fetch Error:', err);
-        if (err instanceof Error) {
-          console.error('Error details:', err.message);
-        }
-      }
-    };
-
-    fetchPositions();
-  }, [publicKey]);
-
   // Сортировка и фильтрация токенов
   const sortedAndFilteredBalances = balances
     .filter(token => {
@@ -353,252 +320,328 @@ export default function Sidebar() {
   }, 0);
 
   return (
-    <div className="w-80 bg-white shadow-lg p-4 flex flex-col h-full">
-      <div className="flex-grow overflow-y-auto pr-2">
-        <div className="flex items-center justify-between mb-2">
-          <h2 className="text-lg font-semibold">Wallet Overview</h2>
-          <button
-            onClick={fetchWalletData}
-            disabled={loading}
-            className={`p-1.5 rounded transition-colors ${
-              loading 
-                ? 'bg-gray-300 text-gray-500 cursor-not-allowed' 
-                : 'bg-blue-500 text-white hover:bg-blue-600'
-            }`}
-            title="Refresh wallet data"
-          >
-            <svg 
-              className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} 
-              fill="none" 
-              stroke="currentColor" 
-              viewBox="0 0 24 24"
-            >
-              <path 
-                strokeLinecap="round" 
-                strokeLinejoin="round" 
-                strokeWidth={2} 
-                d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" 
-              />
-            </svg>
-          </button>
-        </div>
-        <div className="space-y-2">
-          <div className="bg-gray-50 p-3 rounded-lg">
-            <h3 className="text-sm text-gray-600 mb-1">Total Value</h3>
-            {loading ? (
-              <p className="text-gray-500">Loading...</p>
-            ) : error ? (
-              <p className="text-red-500">{error}</p>
-            ) : (
-              <p className="text-xl font-bold">${Number(totalValue).toFixed(2)}</p>
-            )}
-          </div>
-
-          <div className="flex items-center justify-between mb-1">
-            <label className="flex items-center space-x-2 text-sm text-gray-600">
-              <input
-                type="checkbox"
-                checked={hideSmallAssets}
-                onChange={(e) => setHideSmallAssets(e.target.checked)}
-                className="form-checkbox h-4 w-4 text-blue-600 rounded"
-              />
-              <span>Hide &lt;$1</span>
-            </label>
-          </div>
-
-          <div className="space-y-2">
-            <button
-              onClick={handleWalletToggle}
-              className="w-full p-2 flex items-center justify-between hover:bg-gray-100 transition-colors rounded"
-            >
-              <div className="flex items-center space-x-2">
-                <span className="text-sm font-medium">Wallet</span>
-                {!loading && !error && (
-                  <span className="text-sm text-gray-500">
-                    ${totalTokensValue.toFixed(2)}
-                  </span>
-                )}
-              </div>
-              <svg
-                className={`w-4 h-4 transform transition-transform ${isExpanded ? 'rotate-180' : ''}`}
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
+    <div className={`bg-white border-r border-gray-200 h-screen flex flex-col transition-all duration-300 ${isSidebarExpanded ? 'w-80' : 'w-20'}`}>
+      <div className="flex-1 overflow-y-auto">
+        <div className="px-4 py-4">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-lg font-semibold">Wallet Overview</h2>
+            <div className="flex items-center space-x-2">
+              <button
+                onClick={handleSidebarToggle}
+                className="p-1.5 rounded hover:bg-gray-100 transition-colors"
+                title={isSidebarExpanded ? "Collapse sidebar" : "Expand sidebar"}
               >
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-              </svg>
-            </button>
-
-            <div className={`overflow-hidden transition-all duration-200 ${isExpanded ? 'max-h-[1000px]' : 'max-h-0'}`}>
-              <div className="p-2 pt-0">
-                {loading ? (
-                  <p className="text-gray-500">Loading...</p>
-                ) : error ? (
-                  <p className="text-red-500">{error}</p>
-                ) : sortedAndFilteredBalances.length === 0 ? (
-                  <p className="text-gray-500">No tokens found</p>
-                ) : (
-                  <div className="space-y-1">
-                    {sortedAndFilteredBalances.map((token) => {
-                      const value = Number(token.balance) * Number(token.tokenPrice);
-                      return (
-                        <div key={token.tokenAddress} className="flex items-center justify-between">
-                          <div>
-                            <p className="text-sm font-medium">{token.symbol}</p>
-                          </div>
-                          <div className="text-right">
-                            <p className="text-sm font-medium">{Number(token.balance).toFixed(4)}</p>
-                            <p className="text-xs text-gray-500">${value.toFixed(2)}</p>
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                )}
-                {hideSmallAssets && totalTokensValue > filteredTokensValue && (
-                  <p className="text-xs text-gray-500 mt-1">
-                    Hidden: ${(totalTokensValue - filteredTokensValue).toFixed(2)}
-                  </p>
-                )}
-              </div>
+                <svg
+                  className={`w-4 h-4 transform transition-transform ${isSidebarExpanded ? 'rotate-180' : ''}`}
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 19l-7-7 7-7m8 14l-7-7 7-7" />
+                </svg>
+              </button>
+              <button
+                onClick={fetchWalletData}
+                disabled={loading}
+                className={`p-1.5 rounded transition-colors ${
+                  loading 
+                    ? 'bg-gray-300 text-gray-500 cursor-not-allowed' 
+                    : 'bg-blue-500 text-white hover:bg-blue-600'
+                }`}
+                title="Refresh wallet data"
+              >
+                <svg 
+                  className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} 
+                  fill="none" 
+                  stroke="currentColor" 
+                  viewBox="0 0 24 24"
+                >
+                  <path 
+                    strokeLinecap="round" 
+                    strokeLinejoin="round" 
+                    strokeWidth={2} 
+                    d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" 
+                  />
+                </svg>
+              </button>
             </div>
           </div>
 
-          <div className="space-y-2">
-            <button
-              onClick={handlePositionsToggle}
-              className="w-full p-2 flex items-center justify-between hover:bg-gray-100 transition-colors rounded"
-            >
-              <div className="flex items-center space-x-2">
-                <span className="text-sm font-medium">Positions</span>
-                {!loading && !error && (
-                  <span className="text-sm text-gray-500">
-                    ${totalPositionsValue.toFixed(2)}
-                  </span>
-                )}
-              </div>
-              <svg
-                className={`w-4 h-4 transform transition-transform ${isPositionsExpanded ? 'rotate-180' : ''}`}
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
+          <div className="space-y-4">
+            <div className="bg-gray-50 p-3 rounded-lg">
+              <h3 className="text-sm text-gray-600 mb-1">Total Value</h3>
+              {loading ? (
+                <p className="text-gray-500">Loading...</p>
+              ) : error ? (
+                <p className="text-red-500">{error}</p>
+              ) : (
+                <p className="text-xl font-bold">${Number(totalValue).toFixed(2)}</p>
+              )}
+            </div>
+
+            <div className="flex items-center justify-between mb-2">
+              <label className="flex items-center space-x-2 text-sm text-gray-600">
+                <input
+                  type="checkbox"
+                  checked={hideSmallAssets}
+                  onChange={(e) => setHideSmallAssets(e.target.checked)}
+                  className="form-checkbox h-4 w-4 text-blue-600 rounded"
+                />
+                <span>Hide &lt;$1</span>
+              </label>
+            </div>
+
+            <div className="space-y-2">
+              <button
+                onClick={handleWalletToggle}
+                className="w-full p-2 flex items-center justify-between hover:bg-gray-100 transition-colors rounded"
               >
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-              </svg>
-            </button>
+                <div className="flex items-center space-x-2">
+                  <span className="text-sm font-medium">Wallet</span>
+                  {!loading && !error && (
+                    <span className="text-sm text-gray-500">
+                      ${totalTokensValue.toFixed(2)}
+                    </span>
+                  )}
+                </div>
+                <svg
+                  className={`w-4 h-4 transform transition-transform ${isWalletExpanded ? 'rotate-180' : ''}`}
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                </svg>
+              </button>
 
-            <div className={`overflow-hidden transition-all duration-200 ${isPositionsExpanded ? 'max-h-[1000px]' : 'max-h-0'}`}>
-              <div className="p-2 pt-0">
-                {loading ? (
-                  <p className="text-sm text-gray-500">Loading positions...</p>
-                ) : filteredPositions.length === 0 ? (
-                  <p className="text-sm text-gray-500">No open positions</p>
-                ) : (
-                  filteredPositions.map((wallet) => (
-                    wallet.platformList?.map((platform) => (
-                      <div key={platform.analysisPlatformId} className="bg-gray-50 p-2 rounded-lg mb-2">
-                        <div 
-                          className="flex justify-between items-start cursor-pointer hover:bg-gray-100 rounded p-1"
-                          onClick={() => handleProtocolClick(platform.analysisPlatformId)}
-                        >
-                          <div className="flex items-center space-x-2">
-                            {platform.platformLogo && (
-                              <img 
-                                src={platform.platformLogo} 
-                                alt={platform.platformName}
-                                className="w-4 h-4"
-                              />
-                            )}
+              <div className={`overflow-hidden transition-all duration-200 ${isWalletExpanded ? 'max-h-[1000px]' : 'max-h-0'}`}>
+                <div className="p-2 pt-0">
+                  {loading ? (
+                    <p className="text-gray-500">Loading...</p>
+                  ) : error ? (
+                    <p className="text-red-500">{error}</p>
+                  ) : sortedAndFilteredBalances.length === 0 ? (
+                    <p className="text-gray-500">No tokens found</p>
+                  ) : (
+                    <div className="space-y-1">
+                      {sortedAndFilteredBalances.map((token) => {
+                        const value = Number(token.balance) * Number(token.tokenPrice);
+                        return (
+                          <div key={token.tokenAddress} className="flex items-center justify-between">
                             <div>
-                              <div className="text-sm font-medium text-blue-600">
-                                {platform.platformName}
-                              </div>
-                              <p className="text-xs text-gray-500">
-                                {platform.investmentCount} position{platform.investmentCount !== 1 ? 's' : ''}
-                              </p>
+                              <p className="text-sm font-medium">{token.symbol}</p>
+                            </div>
+                            <div className="text-right">
+                              <p className="text-sm font-medium">{Number(token.balance).toFixed(4)}</p>
+                              <p className="text-xs text-gray-500">${value.toFixed(2)}</p>
                             </div>
                           </div>
-                          <div className="text-right">
-                            <p className="text-sm font-medium">${Number(platform.currencyAmount).toFixed(2)}</p>
-                            <div className="flex items-center space-x-1">
-                              {platform.networkBalanceVoList.map((network) => (
-                                <div key={network.chainId} className="flex items-center">
-                                  {network.networkLogo && (
-                                    <img 
-                                      src={network.networkLogo} 
-                                      alt={network.network}
-                                      className="w-3 h-3"
-                                    />
-                                  )}
-                                </div>
-                              ))}
-                            </div>
-                          </div>
-                        </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                  {hideSmallAssets && totalTokensValue > filteredTokensValue && (
+                    <p className="text-xs text-gray-500 mt-1">
+                      Hidden: ${(totalTokensValue - filteredTokensValue).toFixed(2)}
+                    </p>
+                  )}
+                </div>
+              </div>
+            </div>
 
-                        {/* Детали позиции */}
-                        {loadingPositions[platform.analysisPlatformId] ? (
-                          <div className="mt-2 text-sm text-gray-500">Loading details...</div>
-                        ) : positionDetails[platform.analysisPlatformId]?.map((detail) => (
-                          detail.networkHoldVoList.map((network) => (
-                            network.investTokenBalanceVoList.map((investment) => (
-                              <div key={investment.investmentKey} className="mt-2 pt-2 border-t border-gray-200">
-                                <div className="flex justify-between items-start">
-                                  <div>
-                                    <div className="text-sm font-medium">{investment.investmentName}</div>
-                                    <div className="text-xs text-gray-500">{investment.investName}</div>
+            <div className="space-y-2">
+              <button
+                onClick={handlePositionsToggle}
+                className="w-full p-2 flex items-center justify-between hover:bg-gray-100 transition-colors rounded"
+              >
+                <div className="flex items-center space-x-2">
+                  <span className="text-sm font-medium">Positions</span>
+                  {!loading && !error && (
+                    <span className="text-sm text-gray-500">
+                      ${totalPositionsValue.toFixed(2)}
+                    </span>
+                  )}
+                </div>
+                <svg
+                  className={`w-4 h-4 transform transition-transform ${isPositionsExpanded ? 'rotate-180' : ''}`}
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                </svg>
+              </button>
+
+              <div className={`overflow-hidden transition-all duration-200 ${isPositionsExpanded ? 'max-h-[1000px]' : 'max-h-0'}`}>
+                <div className="p-2 pt-0">
+                  {loading ? (
+                    <p className="text-sm text-gray-500">Loading positions...</p>
+                  ) : filteredPositions.length === 0 ? (
+                    <p className="text-sm text-gray-500">No open positions</p>
+                  ) : (
+                    filteredPositions.map((wallet) => (
+                      wallet.platformList?.map((platform) => (
+                        <div key={platform.analysisPlatformId} className="bg-gray-50 p-2 rounded-lg mb-2">
+                          <div 
+                            className="flex justify-between items-start cursor-pointer hover:bg-gray-100 rounded p-1"
+                            onClick={() => handleProtocolClick(platform.analysisPlatformId)}
+                          >
+                            <div className="flex items-center space-x-2">
+                              {platform.platformLogo && (
+                                <img 
+                                  src={platform.platformLogo} 
+                                  alt={platform.platformName}
+                                  className="w-4 h-4"
+                                />
+                              )}
+                              <div>
+                                <div className="text-sm font-medium text-blue-600">
+                                  {platform.platformName}
+                                </div>
+                                <p className="text-xs text-gray-500">
+                                  {platform.investmentCount} position{platform.investmentCount !== 1 ? 's' : ''}
+                                </p>
+                              </div>
+                            </div>
+                            <div className="text-right">
+                              <p className="text-sm font-medium">${Number(platform.currencyAmount).toFixed(2)}</p>
+                              <div className="flex items-center space-x-1">
+                                {platform.networkBalanceVoList.map((network) => (
+                                  <div key={network.chainId} className="flex items-center">
+                                    {network.networkLogo && (
+                                      <img 
+                                        src={network.networkLogo} 
+                                        alt={network.network}
+                                        className="w-3 h-3"
+                                      />
+                                    )}
                                   </div>
-                                  <div className="text-right">
-                                    <div className="text-sm font-medium">
-                                      ${parseFloat(investment.totalValue).toFixed(2)}
+                                ))}
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Детали позиции */}
+                          {loadingPositions[platform.analysisPlatformId] ? (
+                            <div className="mt-2 text-sm text-gray-500">Loading details...</div>
+                          ) : positionDetails[platform.analysisPlatformId]?.map((detail) => (
+                            detail.networkHoldVoList.map((network) => (
+                              network.investTokenBalanceVoList.map((investment) => (
+                                <div key={investment.investmentKey} className="mt-2 pt-2 border-t border-gray-200">
+                                  <div className="flex justify-between items-start">
+                                    <div>
+                                      <div className="text-sm font-medium">{investment.investmentName}</div>
+                                      <div className="text-xs text-gray-500">{investment.investName}</div>
+                                    </div>
+                                    <div className="text-right">
+                                      <div className="text-sm font-medium">
+                                        ${parseFloat(investment.totalValue).toFixed(2)}
+                                      </div>
                                     </div>
                                   </div>
-                                </div>
-                                <div className="mt-1 space-y-1">
-                                  {investment.assetsTokenList.map((token) => (
-                                    <div key={token.tokenAddress} className="flex items-center justify-between text-xs">
-                                      <div className="flex items-center space-x-1">
-                                        {token.tokenLogo && (
-                                          <img 
-                                            src={token.tokenLogo} 
-                                            alt={token.tokenSymbol}
-                                            className="w-4 h-4"
-                                          />
-                                        )}
-                                        <span>{token.tokenSymbol}</span>
-                                      </div>
-                                      <div className="text-right">
-                                        <div>{parseFloat(token.coinAmount).toFixed(6)}</div>
-                                        <div className="text-gray-500">
-                                          ${parseFloat(token.currencyAmount).toFixed(2)}
+                                  <div className="mt-1 space-y-1">
+                                    {investment.assetsTokenList.map((token) => (
+                                      <div key={token.tokenAddress} className="flex items-center justify-between text-xs">
+                                        <div className="flex items-center space-x-1">
+                                          {token.tokenLogo && (
+                                            <img 
+                                              src={token.tokenLogo} 
+                                              alt={token.tokenSymbol}
+                                              className="w-4 h-4"
+                                            />
+                                          )}
+                                          <span>{token.tokenSymbol}</span>
+                                        </div>
+                                        <div className="text-right">
+                                          <div>{parseFloat(token.coinAmount).toFixed(6)}</div>
+                                          <div className="text-gray-500">
+                                            ${parseFloat(token.currencyAmount).toFixed(2)}
+                                          </div>
                                         </div>
                                       </div>
-                                    </div>
-                                  ))}
+                                    ))}
+                                  </div>
                                 </div>
-                              </div>
+                              ))
                             ))
-                          ))
-                        ))}
-                      </div>
+                          ))}
+                        </div>
+                      ))
                     ))
-                  ))
-                )}
-                {hideSmallAssets && positions.length > filteredPositions.length && (
-                  <p className="text-xs text-gray-500 mt-1">
-                    Hidden positions: {positions.length - filteredPositions.length}
-                  </p>
-                )}
+                  )}
+                  {hideSmallAssets && positions.length > filteredPositions.length && (
+                    <p className="text-xs text-gray-500 mt-1">
+                      Hidden positions: {positions.length - filteredPositions.length}
+                    </p>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* OKX Exchange Section */}
+            <div className="space-y-2">
+              <button
+                onClick={handleOkxToggle}
+                className="w-full p-2 flex items-center justify-between hover:bg-gray-100 transition-colors rounded"
+              >
+                <div className="flex items-center space-x-2">
+                  <span className="text-sm font-medium">OKX Exchange</span>
+                  {isConnected && (
+                    <span className="text-sm text-gray-500">
+                      ${okxTotalBalance.toFixed(2)}
+                    </span>
+                  )}
+                </div>
+                <svg
+                  className={`w-4 h-4 transform transition-transform ${isOkxExpanded ? 'rotate-180' : ''}`}
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                </svg>
+              </button>
+
+              <div className={`overflow-hidden transition-all duration-200 ${isOkxExpanded ? 'max-h-[1000px]' : 'max-h-0'}`}>
+                <div className="p-2 pt-0">
+                  {!isConnected ? (
+                    <div className="text-center p-4">
+                      <p className="text-gray-500 mb-2">Connect to OKX Exchange</p>
+                      <button
+                        onClick={() => setIsOkxModalOpen(true)}
+                        className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg transition-colors"
+                      >
+                        Connect OKX
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="space-y-1">
+                      {okxBalances
+                        .filter(balance => parseFloat(balance.bal) > 0)
+                        .sort((a, b) => parseFloat(b.bal) - parseFloat(a.bal))
+                        .map((balance) => (
+                          <div key={balance.ccy} className="flex items-center justify-between">
+                            <div>
+                              <p className="text-sm font-medium">{balance.ccy}</p>
+                            </div>
+                            <div className="text-right">
+                              <p className="text-sm font-medium">{parseFloat(balance.bal).toFixed(8)}</p>
+                            </div>
+                          </div>
+                        ))}
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
           </div>
         </div>
       </div>
       
-      <div className="mt-2 pt-2 border-t border-gray-200">
-        <h3 className="text-sm font-medium text-gray-600 mb-1">Tools</h3>
+      <div className="flex-shrink-0 px-4 py-4 border-t border-gray-200">
+        <h3 className="text-sm font-medium text-gray-600 mb-2">Tools</h3>
         <div className="space-y-1">
-          <div className="grid grid-cols-2 gap-1">
+          <div className="grid grid-cols-2 gap-2">
             <a 
               href="/products" 
               className="flex items-center space-x-1 text-sm text-blue-600 hover:text-blue-800 hover:underline p-1 rounded hover:bg-gray-50"
@@ -620,6 +663,11 @@ export default function Sidebar() {
           </div>
         </div>
       </div>
+
+      <OkxConnectModal
+        isOpen={isOkxModalOpen}
+        onClose={() => setIsOkxModalOpen(false)}
+      />
     </div>
   );
 } 
