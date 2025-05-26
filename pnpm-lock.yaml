@@ -24,10 +24,10 @@ importers:
         specifier: ^1.0.13
         version: 1.0.13(bufferutil@4.0.9)(utf-8-validate@5.0.10)(zod@3.25.28)
       '@okxconnect/solana-provider':
-        specifier: ^1.8.5
+        specifier: ^1.8.6
         version: 1.8.6(bufferutil@4.0.9)(typescript@5.8.3)(utf-8-validate@5.0.10)
       '@okxconnect/universal-provider':
-        specifier: ^1.8.5
+        specifier: ^1.8.6
         version: 1.8.6(@solana/web3.js@1.98.2(bufferutil@4.0.9)(typescript@5.8.3)(utf-8-validate@5.0.10))
       '@radix-ui/react-slot':
         specifier: ^1.2.3
@@ -9995,7 +9995,7 @@ snapshots:
     dependencies:
       '@metaplex-foundation/js': 0.11.7(bufferutil@4.0.9)(fastestsmallesttextencoderdecoder@1.0.22)(typescript@5.8.3)(utf-8-validate@5.0.10)
       '@solana/web3.js': 1.92.3(bufferutil@4.0.9)(utf-8-validate@5.0.10)
-      axios: 0.27.2
+      axios: 0.27.2(debug@4.3.4)
       eventemitter3: 5.0.1
       lodash: 4.17.21
     transitivePeerDependencies:
@@ -11353,20 +11353,13 @@ snapshots:
 
   axios@0.24.0:
     dependencies:
-      follow-redirects: 1.15.9
+      follow-redirects: 1.15.9(debug@4.3.4)
     transitivePeerDependencies:
       - debug
 
   axios@0.25.0(debug@4.4.1):
     dependencies:
       follow-redirects: 1.15.9(debug@4.4.1)
-    transitivePeerDependencies:
-      - debug
-
-  axios@0.27.2:
-    dependencies:
-      follow-redirects: 1.15.9
-      form-data: 4.0.2
     transitivePeerDependencies:
       - debug
 
@@ -11379,7 +11372,7 @@ snapshots:
 
   axios@1.9.0:
     dependencies:
-      follow-redirects: 1.15.9
+      follow-redirects: 1.15.9(debug@4.3.4)
       form-data: 4.0.2
       proxy-from-env: 1.1.0
     transitivePeerDependencies:
@@ -12462,8 +12455,6 @@ snapshots:
       path-exists: 4.0.0
 
   flow-enums-runtime@0.0.6: {}
-
-  follow-redirects@1.15.9: {}
 
   follow-redirects@1.15.9(debug@4.3.4):
     optionalDependencies:
