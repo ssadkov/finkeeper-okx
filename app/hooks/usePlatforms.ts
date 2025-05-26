@@ -33,8 +33,8 @@ export function usePlatforms() {
                 const response = await fetch('/api/defi/platforms?network=SOL');
                 const data: PlatformsResponse = await response.json();
 
-                if (data.error) {
-                    throw new Error(data.error);
+                if (data.code !== 0) {
+                    throw new Error(data.msg);
                 }
 
                 // Convert array to object with platformName as key
