@@ -6,6 +6,7 @@ import { useWalletContext } from '../context/WalletContext';
 import { useWallet } from '@solana/wallet-adapter-react';
 import { Connection } from '@solana/web3.js';
 import { usePlatforms } from '../hooks/usePlatforms';
+import { useWalletModal } from '@solana/wallet-adapter-react-ui';
 
 interface SupplyModalProps {
     isOpen: boolean;
@@ -104,7 +105,8 @@ export default function InvestmentIdeas() {
     const { walletTokens, publicKey } = useWalletContext();
     const [selectedProduct, setSelectedProduct] = useState<OkxProduct | null>(null);
     const [isModalOpen, setIsModalOpen] = useState(false);
-    const { sendTransaction } = useWallet();
+    const { sendTransaction, signMessage } = useWallet();
+    const { setVisible } = useWalletModal();
     const [isProcessing, setIsProcessing] = useState(false);
     const connection = new Connection('https://api.mainnet-beta.solana.com', 'confirmed');
     const { platforms, loading: platformsLoading } = usePlatforms();
@@ -260,6 +262,23 @@ export default function InvestmentIdeas() {
         return token ? parseFloat(token.balance) : 0;
     };
 
+    const handleSignMessage = async () => {
+        if (!publicKey) {
+            setVisible(true);
+            return;
+        }
+        
+        try {
+            const message = new TextEncoder().encode('Hello from FinKeeper!');
+            const signature = await signMessage?.(message);
+            console.log('Message signed:', signature);
+            // You can add a toast notification here to show success
+        } catch (error) {
+            console.error('Error signing message:', error);
+            // You can add a toast notification here to show error
+        }
+    };
+
     if (error) {
         return (
             <div className="p-4 flex flex-col items-center justify-center min-h-screen">
@@ -276,9 +295,18 @@ export default function InvestmentIdeas() {
 
     return (
         <div className="h-full flex flex-col">
-            <div className="mb-8">
-                <h1 className="text-2xl font-bold mb-4">Investment Ideas</h1>
-                <p className="text-gray-600">Top DeFi opportunities on Solana network</p>
+            <div className="mb-8 flex justify-between items-center">
+                <div>
+                    <h1 className="text-2xl font-bold mb-4">Investment Ideas</h1>
+                    <p className="text-gray-600">Top DeFi opportunities on Solana network</p>
+                </div>
+                <button
+                    onClick={handleSignMessage}
+                    disabled={!publicKey}
+                    className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 disabled:bg-gray-300 disabled:cursor-not-allowed"
+                >
+                    SignMessage
+                </button>
             </div>
 
             {loading && products.length === 0 && (
