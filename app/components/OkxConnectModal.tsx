@@ -18,9 +18,21 @@ export default function OkxConnectModal({ isOpen, onClose }: OkxConnectModalProp
     const handleConnect = async () => {
         setIsLoading(true);
         try {
+            // Проверяем, что passphrase не пустой и не содержит только пробелы
+            if (!passphrase || passphrase.trim() === '') {
+                throw new Error('Passphrase cannot be empty');
+            }
+
             // Создаем временную метку в UTC
             const time = new Date().toISOString();
             
+            console.log('[OKX Connect] Debug info:', {
+                time,
+                passphraseLength: passphrase.length,
+                passphraseFirstChar: passphrase.charAt(0),
+                passphraseLastChar: passphrase.charAt(passphrase.length - 1)
+            });
+
             // Создаем подпись для FUND баланса
             const fundUrl = '/api/v5/asset/balances';
             const fundMessage = time + 'GET' + fundUrl;
@@ -57,51 +69,88 @@ export default function OkxConnectModal({ isOpen, onClose }: OkxConnectModalProp
             );
             const unifiedSign = btoa(String.fromCharCode(...new Uint8Array(unifiedSignature)));
 
-            // Заголовки для запросов
-            const headers = {
-                'OK-ACCESS-KEY': apiKey,
-                'OK-ACCESS-TIMESTAMP': time,
-                'OK-ACCESS-PASSPHRASE': passphrase,
-                'Content-Type': 'application/json',
-            };
+            console.log('[OKX Connect] Testing API credentials...');
 
             // Запрос FUND баланса
+            const fundHeaders = {
+                'OK-ACCESS-KEY': apiKey,
+                'OK-ACCESS-TIMESTAMP': time,
+                'OK-ACCESS-PASSPHRASE': passphrase.trim(),
+                'OK-ACCESS-SIGN': fundSign,
+                'Content-Type': 'application/json',
+                'x-simulated-trading': '0'
+            };
+
+            console.log('[OKX Connect] Fund request headers:', {
+                ...fundHeaders,
+                'OK-ACCESS-SIGN': '[REDACTED]',
+                'OK-ACCESS-KEY': '[REDACTED]',
+                'OK-ACCESS-PASSPHRASE': '[REDACTED]'
+            });
+
             const fundResponse = await fetch('https://www.okx.com' + fundUrl, {
                 method: 'GET',
-                headers: {
-                    ...headers,
-                    'OK-ACCESS-SIGN': fundSign,
-                },
+                headers: fundHeaders,
             });
+            
+            if (!fundResponse.ok) {
+                const errorData = await fundResponse.json();
+                console.error('[OKX Connect] Fund API error:', errorData);
+                throw new Error(`FUND API request failed: ${errorData.msg || fundResponse.statusText}`);
+            }
+            
             const fundData = await fundResponse.json();
-            console.log('FUND Balance Response:', fundData);
+            console.log('[OKX Connect] FUND Balance Response:', fundData);
 
             // Запрос UNIFIED баланса
+            const unifiedHeaders = {
+                'OK-ACCESS-KEY': apiKey,
+                'OK-ACCESS-TIMESTAMP': time,
+                'OK-ACCESS-PASSPHRASE': passphrase.trim(),
+                'OK-ACCESS-SIGN': unifiedSign,
+                'Content-Type': 'application/json',
+                'x-simulated-trading': '0'
+            };
+
+            console.log('[OKX Connect] Unified request headers:', {
+                ...unifiedHeaders,
+                'OK-ACCESS-SIGN': '[REDACTED]',
+                'OK-ACCESS-KEY': '[REDACTED]',
+                'OK-ACCESS-PASSPHRASE': '[REDACTED]'
+            });
+
             const unifiedResponse = await fetch('https://www.okx.com' + unifiedUrl, {
                 method: 'GET',
-                headers: {
-                    ...headers,
-                    'OK-ACCESS-SIGN': unifiedSign,
-                },
+                headers: unifiedHeaders,
             });
+            
+            if (!unifiedResponse.ok) {
+                const errorData = await unifiedResponse.json();
+                console.error('[OKX Connect] Unified API error:', errorData);
+                throw new Error(`UNIFIED API request failed: ${errorData.msg || unifiedResponse.statusText}`);
+            }
+            
             const unifiedData = await unifiedResponse.json();
-            console.log('UNIFIED Balance Response:', unifiedData);
+            console.log('[OKX Connect] UNIFIED Balance Response:', unifiedData);
 
             if (fundData.code === '0' && unifiedData.code === '0') {
+                console.log('[OKX Connect] API credentials verified successfully');
                 // Сохраняем API ключи в localStorage
                 localStorage.setItem('okx_api_key', apiKey);
                 localStorage.setItem('okx_api_secret', apiSecret);
-                localStorage.setItem('okx_passphrase', passphrase);
+                localStorage.setItem('okx_passphrase', passphrase.trim());
                 
                 // Вызываем функцию connect из контекста OKX
                 await connect();
                 
                 onClose();
             } else {
-                throw new Error(fundData.msg || unifiedData.msg || 'Failed to connect to OKX');
+                const errorMessage = fundData.msg || unifiedData.msg || 'Failed to connect to OKX';
+                console.error('[OKX Connect] API error:', errorMessage);
+                throw new Error(errorMessage);
             }
         } catch (error) {
-            console.error('Error connecting to OKX:', error);
+            console.error('[OKX Connect] Error connecting to OKX:', error);
             alert(error instanceof Error ? error.message : 'Failed to connect to OKX');
         } finally {
             setIsLoading(false);

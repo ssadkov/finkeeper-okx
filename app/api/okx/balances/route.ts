@@ -52,9 +52,16 @@ export async function GET(request: NextRequest) {
             'OK-ACCESS-PASSPHRASE': passphrase,
             'OK-ACCESS-SIGN': fundSign,
             'Content-Type': 'application/json',
+            'x-simulated-trading': '0'
         };
 
-        console.log('[OKX API] Making request to OKX');
+        console.log('[OKX API] Making request to OKX with headers:', {
+            ...headers,
+            'OK-ACCESS-SIGN': '[REDACTED]',
+            'OK-ACCESS-KEY': '[REDACTED]',
+            'OK-ACCESS-PASSPHRASE': '[REDACTED]'
+        });
+
         const response = await fetch('https://www.okx.com' + fundUrl, {
             method: 'GET',
             headers,

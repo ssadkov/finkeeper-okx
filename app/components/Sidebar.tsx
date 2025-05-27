@@ -432,7 +432,7 @@ export default function Sidebar() {
   }, 0) : 0;
 
   return (
-    <div className="bg-white border-r border-gray-200 h-screen flex flex-col w-80">
+    <div className="bg-white border-r border-gray-200 flex flex-col w-80">
       <div className="flex-1 overflow-y-auto">
         <div className="px-4 py-4">
           <div className="flex items-center justify-between mb-4">
