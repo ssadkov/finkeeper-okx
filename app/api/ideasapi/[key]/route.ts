@@ -60,19 +60,27 @@ const filterData = (data: any, network?: string, token?: string) => {
     return result;
 };
 
-type Props = {
-    params: {
-        key: string
-    }
-}
-
 export async function GET(
     request: NextRequest,
-    props: Props
 ) {
     try {
-        const parameters = await props.params;
-        const key = parameters.key;
+        // Получаем key из URL
+        const key = request.nextUrl.pathname.split('/').pop();
+        
+        if (!key) {
+            return new NextResponse(
+                JSON.stringify({ error: 'API key is required' }),
+                {
+                    status: 400,
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Access-Control-Allow-Origin': '*',
+                        'Access-Control-Allow-Methods': 'GET',
+                    }
+                }
+            );
+        }
+
         // Проверяем API ключ
         if (!isValidApiKey(key)) {
             return new NextResponse(
@@ -88,13 +96,12 @@ export async function GET(
             );
         }
 
-        // Получаем параметры фильтрации из URL
-        const url = new URL(request.url);
-        const networkParam = url.searchParams.get('network') || undefined;
-        const tokenParam = url.searchParams.get('token') || undefined;
-
         // Получаем все данные
         const data = await getProducts();
+
+        // Получаем параметры фильтрации из URL
+        const networkParam = request.nextUrl.searchParams.get('network') || undefined;
+        const tokenParam = request.nextUrl.searchParams.get('token') || undefined;
 
         // Применяем фильтры
         const filteredData = filterData(data, networkParam, tokenParam);
