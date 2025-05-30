@@ -1,4 +1,5 @@
-import { NextRequest, NextResponse } from 'next/server';
+import type { NextRequest } from 'next/server';
+import { NextResponse } from 'next/server';
 import { getProducts } from '@/app/cron/products';
 import { Product } from '@/app/cron/products/types';
 
@@ -59,12 +60,18 @@ const filterData = (data: any, network?: string, token?: string) => {
     return result;
 };
 
+type Props = {
+    params: {
+        key: string
+    }
+}
+
 export async function GET(
     request: NextRequest,
-    { params }: { params: { key: string } }
+    props: Props
 ) {
     try {
-        const parameters = await params;
+        const parameters = await props.params;
         const key = parameters.key;
         // Проверяем API ключ
         if (!isValidApiKey(key)) {
