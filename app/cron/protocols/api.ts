@@ -39,7 +39,7 @@ export async function fetchProtocolList(): Promise<ProtocolsResponse['data']> {
             if (data.data) {
                 console.log('All protocols basic info:');
                 data.data.forEach((protocol, index) => {
-                    console.log(`[${index}] Name: ${protocol.name}, Keys:`, Object.keys(protocol));
+                    console.log(`[${index}] Name: ${protocol.platformName}, Keys:`, Object.keys(protocol));
                 });
             }
 
