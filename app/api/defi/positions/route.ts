@@ -61,21 +61,15 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
     try {
-        // Проверяем наличие необходимых переменных окружения
         validateConfig();
 
-        // Получаем параметры из тела запроса
         const body = await request.json();
         console.log('Received request body:', body);
         
-        // Проверяем обязательные параметры
         if (!body.walletAddressList || !Array.isArray(body.walletAddressList) || body.walletAddressList.length === 0) {
             return NextResponse.json(
                 { error: 'Missing or invalid walletAddressList parameter' },
-                { 
-                    status: 400,
-                    headers: corsHeaders
-                }
+                { status: 400, headers: corsHeaders }
             );
         }
 
@@ -84,15 +78,11 @@ export async function POST(request: NextRequest) {
             if (!item.chainId || !item.walletAddress) {
                 return NextResponse.json(
                     { error: 'Each wallet address item must have chainId and walletAddress' },
-                    { 
-                        status: 400,
-                        headers: corsHeaders
-                    }
+                    { status: 400, headers: corsHeaders }
                 );
             }
         }
 
-        // Получаем данные от OKX API
         const response = await makeOkxRequest(
             '/api/v5/defi/user/asset/platform/list',
             'POST',
@@ -106,19 +96,13 @@ export async function POST(request: NextRequest) {
             throw new Error('Invalid response format from OKX API');
         }
 
-        // Возвращаем ответ с CORS заголовками
         return NextResponse.json(response, { headers: corsHeaders });
     } catch (error) {
         console.error('Error fetching user positions:', error);
         
         return NextResponse.json(
-            { 
-                error: error instanceof Error ? error.message : 'Unknown error occurred' 
-            },
-            { 
-                status: 500,
-                headers: corsHeaders
-            }
+            { error: error instanceof Error ? error.message : 'Unknown error occurred' },
+            { status: 500, headers: corsHeaders }
         );
     }
 } 

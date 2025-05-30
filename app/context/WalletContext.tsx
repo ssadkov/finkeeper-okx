@@ -72,13 +72,14 @@ export function WalletProvider({ children }: { children: ReactNode }) {
                 throw new Error(data.error || 'Failed to fetch wallet data');
             }
 
-            setTotalValue(data.totalValue);
-            setBalances(data.balances);
+            setTotalValue(data.totalValue || 0);
+            const balancesData = Array.isArray(data.balances) ? data.balances : [];
+            setBalances(balancesData);
             
-            const tokenInfo = data.balances.map((token: TokenAsset) => ({
-                symbol: token.token,
-                balance: token.amount.toString(),
-                address: token.token
+            const tokenInfo = balancesData.map((token: TokenAsset) => ({
+                symbol: token?.token || '',
+                balance: (token?.amount || 0).toString(),
+                address: token?.token || ''
             }));
             setWalletTokens(tokenInfo);
 

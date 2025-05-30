@@ -1,5 +1,7 @@
 'use client';
 
+import { formatTVL } from '../../utils/formatters';
+
 export interface ProcessedPool {
   name: string;
   protocol: string;
@@ -51,7 +53,7 @@ export function PoolsView({ message, pools }: PoolsViewProps) {
                   <div className="text-sm text-gray-900">{pool.apy.toFixed(2)}%</div>
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap">
-                  <div className="text-sm text-gray-900">${pool.tvl.toLocaleString()}</div>
+                  <div className="text-sm text-gray-900">{formatTVL(pool.tvl)}</div>
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap">
                   <div className="flex space-x-1">

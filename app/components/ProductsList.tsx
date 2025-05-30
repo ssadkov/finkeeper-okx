@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { OkxProduct } from '../utils/okxApi';
+import { formatTVL } from '../utils/formatters';
 
 interface FormData {
     simplifyInvestType: string;
@@ -188,7 +189,7 @@ export default function ProductsList() {
                                             <div className="text-sm text-gray-900">{(parseFloat(product.rate) * 100).toFixed(2)}%</div>
                                         </td>
                                         <td className="px-6 py-4 whitespace-nowrap">
-                                            <div className="text-sm text-gray-900">${parseFloat(product.tvl).toLocaleString()}</div>
+                                            <div className="text-sm text-gray-900">{formatTVL(parseFloat(product.tvl))}</div>
                                         </td>
                                         <td className="px-6 py-4">
                                             <div className="text-sm text-gray-900">
