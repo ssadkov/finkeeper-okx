@@ -61,10 +61,10 @@ const filterData = (data: any, network?: string, token?: string) => {
 
 export async function GET(
     request: Request,
-    { params }: { params: { key: string } }
+    context: { params: { key: string } }
 ) {
     try {
-        const parameters = await params;
+        const parameters = await context.params;
         const key = parameters.key;
         // Проверяем API ключ
         if (!isValidApiKey(key)) {
