@@ -18,61 +18,61 @@ const PRODUCTS_LIMIT = 10; // Количество продуктов на ст�
 const DELAY_BETWEEN_REQUESTS = 1000; // Задержка между запросами в мс
 
 async function fetchProductsPage(network: string, offset: number): Promise<ProductsResponse> {
-    const requestPath = '/api/v5/defi/explore/product/list';
-    const method = 'POST';
-    
-    const requestBody = {
-        simplifyInvestType: '101',
-        network,
+        const requestPath = '/api/v5/defi/explore/product/list';
+        const method = 'POST';
+        
+        const requestBody = {
+            simplifyInvestType: '101',
+            network,
         offset: offset.toString(),
         limit: PRODUCTS_LIMIT.toString(),
-        sort: {
-            orders: [{
-                direction: 'DESC',
-                property: 'RATE'
-            }]
-        }
-    };
+            sort: {
+                orders: [{
+                    direction: 'DESC',
+                    property: 'RATE'
+                }]
+            }
+        };
 
-    const bodyStr = JSON.stringify(requestBody);
-    const headers = getOkxHeaders(method, requestPath, bodyStr);
+        const bodyStr = JSON.stringify(requestBody);
+        const headers = getOkxHeaders(method, requestPath, bodyStr);
 
     console.log(`Fetching products page for ${network}, offset: ${offset}`, {
-        url: `https://web3.okx.com${requestPath}`,
-        method,
-        body: requestBody
-    });
-
-    const response = await fetch(`https://web3.okx.com${requestPath}`, {
-        method,
-        headers,
-        body: bodyStr
-    });
-
-    const responseText = await response.text();
-    
-    if (!response.ok) {
-        console.error(`API error for ${network}:`, {
-            status: response.status,
-            statusText: response.statusText,
-            response: responseText
+            url: `https://web3.okx.com${requestPath}`,
+            method,
+            body: requestBody
         });
-        throw new Error(`OKX API error! status: ${response.status}, details: ${responseText}`);
-    }
 
-    let data: ProductsResponse;
-    try {
-        data = JSON.parse(responseText);
+        const response = await fetch(`https://web3.okx.com${requestPath}`, {
+            method,
+            headers,
+            body: bodyStr
+        });
+
+        const responseText = await response.text();
+        
+        if (!response.ok) {
+            console.error(`API error for ${network}:`, {
+                status: response.status,
+                statusText: response.statusText,
+                response: responseText
+            });
+            throw new Error(`OKX API error! status: ${response.status}, details: ${responseText}`);
+        }
+
+        let data: ProductsResponse;
+        try {
+            data = JSON.parse(responseText);
         console.log(`Response data for ${network}, offset ${offset}:`, {
-            code: data.code,
-            msg: data.msg,
-            productsCount: data.data?.investments?.length || 0,
-            totalAvailable: data.data?.total || 'N/A'
-        });
-    } catch (e) {
-        console.error('Failed to parse response JSON:', responseText);
-        throw e;
-    }
+                code: data.code,
+                msg: data.msg,
+                productsCount: data.data?.investments?.length || 0,
+                totalAvailable: data.data?.total || 'N/A'
+            });
+        } catch (e) {
+            console.error('Failed to parse response JSON:', responseText);
+            throw e;
+        }
 
     return data;
 }
@@ -118,9 +118,9 @@ async function fetchAllProductsForNetwork(network: string): Promise<Product[]> {
             
             if (pageData.data?.investments) {
                 const pageProducts = pageData.data.investments.map(product => ({
-                    ...product,
+                ...product,
                     tokenAddr: product.underlyingToken?.[0]?.tokenAddress || '',
-                    network
+                network
                 }));
                 allProducts.push(...pageProducts);
             }

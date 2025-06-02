@@ -8,22 +8,16 @@ import Image from 'next/image';
 
 interface Product {
     network: string;
-    tokenSymbol: string;
-    investmentName: string;
-    platformName: string;
+    token_symbol: string;
+    platform_name: string;
     rate: string | number;
-    rateType: string;
-    investType: string | number;
+    rate_type: string;
+    invest_type: string;
     tvl: number;
-    tokenAddress: string;
-    logoUrl: string;
-    protocolLogo?: string;
-    platformWebSite?: string;
-    underlyingToken?: Array<{
-        tokenSymbol: string;
-        tokenAddress: string;
-        isBaseToken: boolean;
-    }>;
+    token_address: string;
+    token_logo: string;
+    platform_logo: string;
+    platform_url: string;
 }
 
 interface InvestmentIdeasApiProps {
@@ -69,7 +63,7 @@ export default function InvestmentIdeasApi({ apiKey }: InvestmentIdeasApiProps) 
         setError(null);
         
         try {
-            const response = await fetch(`/api/ideasapi/${apiKey}`);
+            const response = await fetch(`/api/ideasapi/products/${apiKey}`);
             const data = await response.json();
             
             if (data.error) {
@@ -113,15 +107,15 @@ export default function InvestmentIdeasApi({ apiKey }: InvestmentIdeasApiProps) 
     }, [apiKey]);
 
     const getTokenIcon = (product: Product) => {
-        if (failedImages.has(product.tokenSymbol)) {
+        if (failedImages.has(product.token_symbol)) {
             return defaultIcon;
         }
         
-        if (product.logoUrl) {
-            return product.logoUrl;
+        if (product.token_logo) {
+            return product.token_logo;
         }
         
-        return getTokenIconUrl(product.tokenSymbol);
+        return getTokenIconUrl(product.token_symbol);
     };
 
     // Фильтруем продукты по выбранной сети
@@ -268,24 +262,24 @@ export default function InvestmentIdeasApi({ apiKey }: InvestmentIdeasApiProps) 
                                             <div className="flex items-center space-x-2">
                                                 <div className="w-6 h-6 relative">
                                                     <Image
-                                                        src={getTokenIcon(product)}
-                                                        alt={product.underlyingToken?.[0]?.tokenSymbol || product.tokenSymbol}
+                                                        src={product.token_logo || defaultIcon}
+                                                        alt={product.token_symbol}
                                                         width={24}
                                                         height={24}
                                                         className="rounded-full"
-                                                        onError={() => handleImageError(product.tokenSymbol)}
+                                                        onError={() => handleImageError(product.token_symbol)}
                                                         unoptimized
                                                     />
                                                 </div>
-                                                <span>{product.underlyingToken?.[0]?.tokenSymbol || product.tokenSymbol}</span>
+                                                <span>{product.token_symbol}</span>
                                             </div>
                                         </td>
                                         <td className="px-6 py-4 text-sm text-gray-900">
                                             <div className="flex items-center space-x-2">
                                                 <div className="w-6 h-6 relative">
                                                     <Image
-                                                        src={product.protocolLogo || defaultProtocolIcon}
-                                                        alt={product.platformName}
+                                                        src={product.platform_logo || defaultProtocolIcon}
+                                                        alt={product.platform_name}
                                                         width={24}
                                                         height={24}
                                                         className="rounded-full"
@@ -296,55 +290,52 @@ export default function InvestmentIdeasApi({ apiKey }: InvestmentIdeasApiProps) 
                                                         unoptimized
                                                     />
                                                 </div>
-                                                <div className="flex items-center space-x-1">
-                                                    {product.platformWebSite ? (
-                                                        <a 
-                                                            href={product.platformWebSite}
-                                                            target="_blank"
-                                                            rel="noopener noreferrer"
-                                                            className="text-blue-600 hover:text-blue-800 hover:underline flex items-center"
-                                                        >
-                                                            {product.platformName}
-                                                            <svg 
-                                                                className="w-4 h-4 ml-1" 
-                                                                fill="none" 
-                                                                stroke="currentColor" 
-                                                                viewBox="0 0 24 24"
-                                                            >
-                                                                <path 
-                                                                    strokeLinecap="round" 
-                                                                    strokeLinejoin="round" 
-                                                                    strokeWidth={2} 
-                                                                    d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" 
-                                                                />
-                                                            </svg>
-                                                        </a>
-                                                    ) : (
-                                                        <span>{product.platformName}</span>
-                                                    )}
-                                                </div>
+                                                {product.platform_url ? (
+                                                    <a
+                                                        href={product.platform_url}
+                                                        target="_blank"
+                                                        rel="noopener noreferrer"
+                                                        className="text-blue-600 hover:text-blue-800 hover:underline flex items-center"
+                                                    >
+                                                        {product.platform_name}
+														<svg 
+															className="w-4 h-4 ml-1" 
+															fill="none" 
+															stroke="currentColor" 
+															viewBox="0 0 24 24"
+														>
+															<path 
+																strokeLinecap="round" 
+																strokeLinejoin="round" 
+																strokeWidth={2} 
+																d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" 
+															/>
+														</svg>
+                                                    </a>
+                                                ) : (
+                                                    <span>{product.platform_name}</span>
+                                                )}
                                             </div>
                                         </td>
                                         <td className="px-6 py-4 text-sm text-gray-900">
-                                            {(() => {
-                                                console.log('Product investType:', product.investType); // Отладочный вывод
-                                                return getInvestmentType(product.investType);
+											{(() => {
+                                                return getInvestmentType(product.invest_type);
                                             })()}
                                         </td>
                                         <td className="px-6 py-4 text-sm text-gray-900">
-                                            {product.rateType === '1' ? (parseFloat(String(product.rate)) * 100).toFixed(2) + '%' : ''}
+                                            {product.rate_type === '1' ? (parseFloat(String(product.rate)) * 100).toFixed(2) + '%' : ''}
                                         </td>
                                         <td className="px-6 py-4 text-sm text-gray-900">
-                                            {product.rateType === '0' ? (parseFloat(String(product.rate)) * 100).toFixed(2) + '%' : ''}
+                                            {product.rate_type === '0' ? (parseFloat(String(product.rate)) * 100).toFixed(2) + '%' : ''}
                                         </td>
                                         <td className="px-6 py-4 text-sm text-gray-900">{formatTVL(product.tvl)}</td>
-                                        <td className="px-6 py-4 text-sm text-gray-900 font-mono">
+                                        <td className="px-6 py-4 text-sm text-gray-900">
                                             <div className="flex items-center space-x-2">
                                                 <span className="truncate">
-                                                    {shortenAddress(product.underlyingToken?.[0]?.tokenAddress || product.tokenAddress)}
+                                                    {shortenAddress(product.token_address)}
                                                 </span>
                                                 <button
-                                                    onClick={() => copyToClipboard(product.underlyingToken?.[0]?.tokenAddress || product.tokenAddress)}
+                                                    onClick={() => copyToClipboard(product.token_address)}
                                                     className="text-gray-500 hover:text-gray-700 focus:outline-none"
                                                     title="Copy address"
                                                 >

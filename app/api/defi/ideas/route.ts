@@ -1,82 +1,73 @@
 import { NextResponse } from 'next/server';
-import { promises as fs } from 'fs';
-import path from 'path';
+import pool from '@/app/config/database';
 
 interface InvestmentIdea {
-    networks: string;
-    tokenSymbol: string;
-    platformName: string;
+    network: string;
+    token_symbol: string;
+    platform_name: string;
     rate: string | number;
+    rate_type: string;
     tvl: number;
-    tokenAddress: string;
-    logoUrl: string;
-    name?: string;
-    protocolLogo?: string;
-    platformWebSite?: string;
-}
-
-interface NetworkProducts {
-    [network: string]: any[];
+    token_address: string;
+    token_logo: string;
+    platform_logo: string;
+    platform_url: string;
+    invest_type: string;
 }
 
 export async function GET() {
     try {
-        // Путь к директории с данными
-        const dataDirectory = path.join(process.cwd(), 'data');
+        const client = await pool.connect();
         
-        // Читаем все файлы из директории data
-        const files = await fs.readdir(dataDirectory);
-        
-        // Ищем файл с общими данными
-        const allProductsFile = files.find(file => file === 'defi_products_all.json');
-        if (!allProductsFile) {
-            throw new Error('Products data file not found');
-        }
+        try {
+            // Получаем все продукты из базы данных
+            const query = `
+                SELECT 
+                    network,
+                    token_symbol,
+                    platform_name,
+                    rate,
+                    rate_type,
+                    tvl,
+                    token_address,
+                    token_logo,
+                    platform_logo,
+                    platform_url,
+                    invest_type
+                FROM products_list
+                ORDER BY rate DESC
+            `;
+            
+            const { rows } = await client.query(query);
 
-        // Читаем данные из файла
-        const filePath = path.join(dataDirectory, allProductsFile);
-        const fileContent = await fs.readFile(filePath, 'utf8');
-        const data = JSON.parse(fileContent);
+            // Преобразуем данные в нужный формат
+            const ideas: InvestmentIdea[] = rows.map(row => ({
+                network: row.network,
+                token_symbol: row.token_symbol,
+                platform_name: row.platform_name,
+                rate: row.rate,
+                rate_type: row.rate_type,
+                tvl: parseFloat(row.tvl) || 0,
+                token_address: row.token_address,
+                token_logo: row.token_logo,
+                platform_logo: row.platform_logo,
+                platform_url: row.platform_url,
+                invest_type: row.invest_type
+            }));
 
-        let allIdeas: InvestmentIdea[] = [];
-
-        // Обрабатываем данные из всех сетей
-        if (data.networks) {
-            const networks = data.networks as NetworkProducts;
-            Object.entries(networks).forEach(([network, products]) => {
-                products.forEach(product => {
-                    // Получаем данные из первого элемента массива underlyingToken
-                    const underlyingToken = product.underlyingToken && product.underlyingToken[0] ? product.underlyingToken[0] : {};
-                    
-                    allIdeas.push({
-                        networks: network,
-                        tokenSymbol: underlyingToken.tokenSymbol || product.tokenSymbol || '',
-                        platformName: product.platformName || 'Unknown',
-                        rate: product.rate || 0,
-                        tvl: parseFloat(product.tvl) || 0,
-                        tokenAddress: underlyingToken.tokenAddress || product.tokenAddr || '',
-                        logoUrl: product.logoUrl || '',
-                        name: product.name || underlyingToken.tokenSymbol || '',
-                        protocolLogo: product.protocolLogo || '',
-                        platformWebSite: product.platformWebSite || ''
-                    });
+            // Логируем первый элемент для проверки
+            if (ideas.length > 0) {
+                console.log('Sample idea:', {
+                    platform_name: ideas[0].platform_name,
+                    platform_logo: ideas[0].platform_logo,
+                    platform_url: ideas[0].platform_url
                 });
-            });
+            }
+
+            return NextResponse.json({ ideas });
+        } finally {
+            client.release();
         }
-
-        // Сортируем по rate по убыванию
-        allIdeas.sort((a, b) => parseFloat(String(b.rate)) - parseFloat(String(a.rate)));
-
-        // Логируем первый элемент для проверки
-        if (allIdeas.length > 0) {
-            console.log('Sample idea:', {
-                platformName: allIdeas[0].platformName,
-                protocolLogo: allIdeas[0].protocolLogo,
-                platformWebSite: allIdeas[0].platformWebSite
-            });
-        }
-
-        return NextResponse.json({ ideas: allIdeas });
     } catch (error) {
         console.error('Error reading investment ideas:', error);
         return NextResponse.json(

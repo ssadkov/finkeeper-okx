@@ -1,20 +1,47 @@
-import { saveToLocalStorage } from '../products/storage';
 import { fetchProtocolList } from './api';
 import { ProtocolData } from './types';
+import pool from '@/app/config/database';
 
-// Storage key for protocols data
-const STORAGE_KEY = 'protocols_list';
+// Функция для сохранения одного протокола
+async function saveProtocolToDatabase(client: any, protocol: ProtocolData) {
+    const query = `
+        INSERT INTO protocols_list (
+            platform_id,
+            platform_name,
+            logo,
+            network,
+            platform_website,
+            platform_min_infos
+        ) VALUES ($1, $2, $3, $4, $5, $6)
+        ON CONFLICT (platform_id) 
+        DO UPDATE SET
+            platform_name = EXCLUDED.platform_name,
+            logo = EXCLUDED.logo,
+            network = EXCLUDED.network,
+            platform_website = EXCLUDED.platform_website,
+            platform_min_infos = EXCLUDED.platform_min_infos,
+            updated_at = NOW()
+        RETURNING *
+    `;
 
-// Get current timestamp in ISO format without milliseconds
-const getCurrentTimestamp = () => {
-    const now = new Date();
-    return now.toISOString().split('.')[0] + 'Z';
-};
+    const values = [
+        protocol.platformId,
+        protocol.platformName,
+        protocol.logo,
+        protocol.network,
+        protocol.platformWebSite,
+        JSON.stringify(protocol.platformMinInfos)
+    ];
+
+    return client.query(query, values);
+}
 
 export async function updateProtocolList() {
+    const client = await pool.connect();
+    
     try {
         console.log('Starting protocol list update process...');
-        const timestamp = getCurrentTimestamp();
+        const timestamp = new Date().toISOString();
         
         // Fetch protocols list
         console.log('Fetching protocol list from API...');
@@ -71,46 +98,71 @@ export async function updateProtocolList() {
         
         console.log(`Filtered ${validProtocols.length} valid protocols out of ${protocols.length} total protocols`);
         
-        if (validProtocols.length > 0) {
-            console.log('Sample valid protocol:', {
-                name: validProtocols[0].platformName,
-                network: validProtocols[0].network,
-                minInfosCount: validProtocols[0].platformMinInfos.length
-            });
+        let savedProtocols = 0;
+        let updatedProtocols = 0;
+        let failedProtocols = 0;
+
+        // Обрабатываем каждый протокол
+        for (const protocol of validProtocols) {
+            try {
+                const result = await saveProtocolToDatabase(client, protocol);
+                
+                if (result.rowCount > 0) {
+                    if (result.rows[0].created_at === result.rows[0].updated_at) {
+                        savedProtocols++;
+                    } else {
+                        updatedProtocols++;
+                    }
+                }
+
+                // Добавляем небольшую задержку между запросами
+                await new Promise(resolve => setTimeout(resolve, 10));
+
+            } catch (error) {
+                console.error('Error processing protocol:', {
+                    platformName: protocol.platformName,
+                    error
+                });
+                failedProtocols++;
+            }
+
+            // Логируем прогресс каждые 10 протоколов
+            if ((savedProtocols + updatedProtocols + failedProtocols) % 10 === 0) {
+                console.log(`Progress: saved=${savedProtocols}, updated=${updatedProtocols}, failed=${failedProtocols}`);
+            }
         }
-        
-        // Save data with timestamp
-        const protocolData = {
-            timestamp,
-            protocols: validProtocols
-        };
-        
-        // Save to storage
-        console.log('Saving protocol data to storage...');
-        await saveToLocalStorage(STORAGE_KEY, protocolData);
-        
-        // Calculate statistics
-        const networkCounts = validProtocols.reduce((acc, protocol) => {
-            const network = protocol.network;
-            acc[network] = (acc[network] || 0) + 1;
-            return acc;
-        }, {} as Record<string, number>);
+
+        // Получаем итоговую статистику
+        const { rows: [stats] } = await client.query(`
+            SELECT 
+                COUNT(*) as total_count,
+                COUNT(DISTINCT network) as network_count,
+                json_object_agg(network, count) as network_counts
+            FROM (
+                SELECT network, COUNT(*) as count 
+                FROM protocols_list 
+                GROUP BY network
+            ) as network_stats
+        `);
 
         const result = {
             timestamp,
-            totalCount: validProtocols.length,
-            networkCounts,
+            totalCount: parseInt(stats.total_count),
+            networkCount: parseInt(stats.network_count),
+            networkCounts: stats.network_counts,
+            savedProtocols,
+            updatedProtocols,
+            failedProtocols,
             invalidProtocols: protocols.length - validProtocols.length
         };
 
         console.log('Protocol list updated successfully:', result);
-
         return result;
+
     } catch (error) {
-        console.error('Error in updateProtocolList:', {
-            error: error instanceof Error ? error.message : 'Unknown error',
-            stack: error instanceof Error ? error.stack : undefined
-        });
+        console.error('Error in updateProtocolList:', error);
         throw error;
+    } finally {
+        client.release();
     }
 } 

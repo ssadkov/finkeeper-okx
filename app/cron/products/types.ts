@@ -75,6 +75,9 @@ export interface UpdateProductsResult {
     totalCount: number;
     networkCounts: Record<string, number>;
     enrichedCount: number;
+    savedProducts: number;
+    updatedProducts: number;
+    failedProducts: number;
 }
 
 export interface TokensResponse {

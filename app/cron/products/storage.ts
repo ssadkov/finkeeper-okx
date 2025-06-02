@@ -2,6 +2,7 @@ import fs from 'fs/promises';
 import path from 'path';
 import { TokenInfo } from '../tokens/types';
 import { ProtocolData } from '../protocols/types';
+import pool from '@/app/config/database';
 
 const DATA_DIR = path.join(process.cwd(), 'data');
 
@@ -65,75 +66,40 @@ export async function getTokenInfo(tokenAddress: string, network: string): Promi
             return null;
         }
 
-        const tokenData = await loadFromLocalStorage('token_lists') as TokenStorageData | null;
-        if (!tokenData?.tokens) {
-            console.warn('No token data found in storage');
+        // Для SUI и APTOS используем полный адрес
+        const searchAddress = ['SUI', 'APTOS'].includes(network)
+            ? tokenAddress
+            : tokenAddress.toLowerCase();
+
+        console.log(`Searching for token: ${searchAddress}`);
+
+        const query = `
+            SELECT token_id, logo_url, token_decimal::text
+            FROM token_lists
+            WHERE token_address = $1
+            LIMIT 1
+        `;
+
+        const { rows } = await pool.query(query, [searchAddress]);
+                
+        if (rows.length === 0) {
+            console.warn(`Token not found: ${tokenAddress}`);
             return null;
         }
 
-        console.log(`Searching for token: ${tokenAddress}`);
-        console.log(`Total tokens in storage: ${tokenData.tokens.length}`);
+        const tokenInfo = rows[0];
+        console.log(`Found token info:`, {
+            tokenId: tokenInfo.token_id,
+            tokenAddress: tokenAddress
+        });
 
-        // Нормализуем искомый адрес
-        const normalizedSearchAddress = normalizeTokenAddress(tokenAddress);
-        console.log(`Normalized search address: ${normalizedSearchAddress}`);
-
-        // Ищем токен с совпадающим адресом
-        for (const token of tokenData.tokens) {
-            // Проверяем наличие tokenInfos и что это массив
-            if (!token?.tokenInfos || !Array.isArray(token.tokenInfos)) {
-                console.warn('Invalid token data structure:', token);
-                continue;
-            }
-
-            // Фильтруем невалидные элементы
-            const validTokenInfos = token.tokenInfos.filter(info => 
-                info && typeof info === 'object' && 'tokenAddress' in info && info.tokenAddress
-            );
-
-            const tokenInfo = validTokenInfos.find(info => {
-                // Нормализуем адрес из хранилища для сравнения
-                const normalizedStoredAddress = normalizeTokenAddress(info.tokenAddress);
-                const isMatch = normalizedStoredAddress === normalizedSearchAddress;
-                
-                if (isMatch) {
-                    console.log(`Found match:`, {
-                        original: info.tokenAddress,
-                        normalized: normalizedStoredAddress,
-                        searchFor: normalizedSearchAddress
-                    });
-                }
-                
-                return isMatch;
-            });
-
-            if (tokenInfo) {
-                console.log(`Found token info:`, {
-                    symbol: token.symbol,
-                    tokenId: tokenInfo.tokenId,
-                    network: tokenInfo.network,
-                    originalAddress: tokenInfo.tokenAddress,
-                    searchAddress: tokenAddress
-                });
-
-                // Проверяем наличие всех необходимых полей
-                if (!tokenInfo.tokenId || !tokenInfo.logoUrl || !tokenInfo.tokenDecimal) {
-                    console.warn('Found token info is incomplete:', tokenInfo);
-                    continue;
-                }
-
-                return {
-                    tokenId: tokenInfo.tokenId,
-                    logoUrl: tokenInfo.logoUrl,
-                    tokenDecimal: tokenInfo.tokenDecimal
-                };
-            }
-        }
-
-        console.warn(`Token not found: ${tokenAddress} (normalized: ${normalizedSearchAddress})`);
-        return null;
+        return {
+            tokenId: tokenInfo.token_id,
+            logoUrl: tokenInfo.logo_url,
+            tokenDecimal: tokenInfo.token_decimal
+        };
     } catch (error) {
-        console.error('Error getting token info:', error);
+        console.error('Error getting token info from database:', error);
         return null;
     }
 }
@@ -149,42 +115,32 @@ export async function getProtocolInfo(platformId: number): Promise<{
             return null;
         }
 
-        const protocolData = await loadFromLocalStorage('protocols_list') as { protocols: ProtocolData[] } | null;
-        if (!protocolData?.protocols) {
-            console.warn('No protocol data found in storage');
+        const query = `
+            SELECT platform_id, platform_name, logo, platform_website
+            FROM protocols_list
+            WHERE platform_id = $1
+            LIMIT 1
+        `;
+
+        const { rows } = await pool.query(query, [platformId]);
+
+        if (rows.length === 0) {
+            console.warn(`Protocol not found: platformId ${platformId}`);
             return null;
         }
 
-        console.log(`Searching for protocol with platformId: ${platformId}`);
-        console.log(`Total protocols in storage: ${protocolData.protocols.length}`);
+        const protocol = rows[0];
+        console.log(`Found protocol info:`, {
+            platformId: protocol.platform_id,
+            platformName: protocol.platform_name,
+            hasLogo: !!protocol.logo,
+            hasWebsite: !!protocol.platform_website
+        });
 
-        // Выводим первые несколько протоколов для проверки структуры
-        console.log('Sample protocols from storage:', 
-            protocolData.protocols.slice(0, 3).map(p => ({
-                platformId: p.platformId,
-                platformName: p.platformName
-            }))
-        );
-
-        // Ищем протокол с совпадающим platformId
-        const protocol = protocolData.protocols.find(p => p.platformId === platformId);
-
-        if (protocol) {
-            console.log(`Found protocol info:`, {
-                platformId: protocol.platformId,
-                platformName: protocol.platformName,
-                hasLogo: !!protocol.logo,
-                hasWebsite: !!protocol.platformWebSite
-            });
-
-            return {
-                logo: protocol.logo,
-                platformWebSite: protocol.platformWebSite
-            };
-        }
-
-        console.warn(`Protocol not found: platformId ${platformId}`);
-        return null;
+        return {
+            logo: protocol.logo,
+            platformWebSite: protocol.platform_website
+        };
     } catch (error) {
         console.error('Error getting protocol info:', error);
         return null;
