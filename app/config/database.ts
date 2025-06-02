@@ -20,6 +20,18 @@ pool.on('error', (err, client) => {
     console.error('Unexpected error on idle client', err);
 });
 
+// Функция для проверки соединения
+export async function testConnection(): Promise<boolean> {
+    try {
+        const client = await pool.connect();
+        client.release();
+        return true;
+    } catch (error) {
+        console.error('Error testing database connection:', error);
+        return false;
+    }
+}
+
 // Проверка подключения при старте
 pool.connect()
     .then(client => {
