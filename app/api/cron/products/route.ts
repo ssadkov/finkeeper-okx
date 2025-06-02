@@ -1,9 +1,17 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { updateProducts } from '@/app/cron/products';
 
 // Обработка GET запроса
-export async function GET() {
+export async function GET(req: NextRequest) {
     try {
+        // Проверка авторизации
+        if (req.headers.get('Authorization') !== `Bearer ${process.env.CRON_SECRET}`) {
+            return NextResponse.json(
+                { error: 'Unauthorized' },
+                { status: 401 }
+            );
+        }
+
         // Обновляем данные и получаем статистику
         const result = await updateProducts();
         

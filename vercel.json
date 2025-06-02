@@ -1,0 +1,18 @@
+{
+  "crons": [
+    {
+      "path": "/api/cron/tokens",
+      "schedule": "0 1 * * *",
+      "timezone": "UTC"
+    },
+    {
+      "path": "/api/cron/protocols",
+      "schedule": "0 3 * * *", 
+      "timezone": "UTC"
+    },
+    {
+      "path": "/api/cron/products",
+      "schedule": "30 * * * *"
+    }
+  ]
+}
