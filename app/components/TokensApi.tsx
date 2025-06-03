@@ -6,34 +6,35 @@ import { getTokenIconUrl } from '../utils/tokenIcons';
 import { formatTVL, shortenAddress } from '../utils/formatters';
 import Image from 'next/image';
 
-interface Product {
-    network: string;
+interface Token {
+    token_id: number;
     token_symbol: string;
-    platform_name: string;
-    rate: string | number;
-    rate_type: string;
-    invest_type: string;
-    tvl: number;
+    network: string;
+    logo_url: string;
     token_address: string;
-    token_logo: string;
-    platform_logo: string;
-    platform_url: string;
+    token_decimal: number;
+    updated_at: string;
 }
 
-interface InvestmentIdeasApiProps {
+interface ApiResponse {
+    timestamp: string;
+    totalCount: number;
+    tokens: Token[];
+}
+
+interface TokensApiProps {
     apiKey: string;
 }
 
-const AVAILABLE_NETWORKS = ['ALL', 'SOL', 'APTOS', 'SUI', 'ETH'] as const;
+const AVAILABLE_NETWORKS = ['APTOS', 'SOL', 'SUI', 'ETH'] as const;
 type NetworkType = typeof AVAILABLE_NETWORKS[number];
 
-export default function InvestmentIdeasApi({ apiKey }: InvestmentIdeasApiProps) {
-    const [products, setProducts] = useState<Product[]>([]);
+export default function TokensApi({ apiKey }: TokensApiProps) {
+    const [tokens, setTokens] = useState<Token[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
-    const [selectedNetwork, setSelectedNetwork] = useState<NetworkType>('ALL');
+    const [selectedNetwork, setSelectedNetwork] = useState<NetworkType>('APTOS');
     const defaultIcon = 'https://finkeeper.pro/images/cryptologo/default_coin.webp';
-    const defaultProtocolIcon = 'https://finkeeper.pro/images/cryptologo/default_coin.webp';
     const [failedImages, setFailedImages] = useState<Set<string>>(new Set());
     const [isRefreshing, setIsRefreshing] = useState(false);
 
@@ -57,38 +58,46 @@ export default function InvestmentIdeasApi({ apiKey }: InvestmentIdeasApiProps) 
     const handleImageError = (tokenSymbol: string) => {
         setFailedImages(prev => new Set([...prev, tokenSymbol]));
     };
-	
-    const fetchProducts = async (network?: string) => {
+
+    const fetchTokens = async (network?: string) => {
         setLoading(true);
         setError(null);
         
         try {
-            const url = new URL('https://app.finkeeper.pro/ideasapi/datas/products');
-            url.searchParams.append('id', apiKey);
-            if (network && network !== 'ALL') {
-                url.searchParams.append('network', network);
+            if (!apiKey) {
+                throw new Error('API key is required');
             }
 
-            const response = await fetch(url.toString());
-            const data = await response.json();
+            let urlString = `https://app.finkeeper.pro/ideasapi/datas/tokens?id=${apiKey}`;
+            if (network && network !== 'ALL') {
+                urlString += `&network=${network.toLowerCase()}`;
+            }
+
+            console.log('Fetching tokens from:', urlString);
+            const response = await fetch(urlString, {
+                method: 'GET',
+                headers: {
+                    'Accept': 'application/json',
+                },
+            });
             
-            if (data.error) {
-                throw new Error(data.error);
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
             }
             
-            if (data.networks) {
-                const allProducts = data.networks;
-                // Сортируем по rate по убыванию
-                const sortedProducts = allProducts.sort((a: Product, b: Product) => 
-                    parseFloat(String(b.rate)) - parseFloat(String(a.rate))
-                );
-                setProducts(sortedProducts);
-            } else {
-                throw new Error('No products data found');
+            const data = await response.json() as ApiResponse;
+            console.log('Response data:', data);
+
+            if (!data || !data.tokens || !Array.isArray(data.tokens)) {
+                throw new Error('Invalid response format: tokens array is missing');
             }
+
+            setTokens(data.tokens);
+            console.log(`Received ${data.tokens.length} tokens`);
         } catch (err) {
-            console.error('Error details:', err);
-            setError(err instanceof Error ? err.message : 'Failed to fetch products');
+            console.error('Error fetching tokens:', err);
+            setError(err instanceof Error ? err.message : 'Failed to fetch tokens');
+            setTokens([]);
         } finally {
             setLoading(false);
             setIsRefreshing(false);
@@ -96,23 +105,19 @@ export default function InvestmentIdeasApi({ apiKey }: InvestmentIdeasApiProps) 
     };
 
     useEffect(() => {
-        if (apiKey) {
-            fetchProducts(selectedNetwork);
-        } else {
-            setError('API key is not provided');
-        }
+        fetchTokens(selectedNetwork);
     }, [apiKey, selectedNetwork]);
 
-    const getTokenIcon = (product: Product) => {
-        if (failedImages.has(product.token_symbol)) {
+    const getTokenIcon = (token: Token) => {
+        if (failedImages.has(token.token_symbol)) {
             return defaultIcon;
         }
         
-        if (product.token_logo) {
-            return product.token_logo;
+        if (token.logo_url) {
+            return token.logo_url;
         }
         
-        return getTokenIconUrl(product.token_symbol);
+        return defaultIcon;
     };
 
     const copyToClipboard = async (text: string) => {
@@ -123,35 +128,11 @@ export default function InvestmentIdeasApi({ apiKey }: InvestmentIdeasApiProps) 
         }
     };
 
-    const getInvestmentType = (type: string | number | undefined): string => {
-        if (type === undefined || type === null) {
-            return 'Unknown';
-        }
-
-        const cleanType = type.toString().trim();
-
-        const normalizedType = cleanType === '7' ? '5' : cleanType;
-
-        const typeMap: { [key: string]: string } = {
-            '1': 'Saving',
-            '2': 'Liquidity Pool',
-            '3': 'Farming',
-            '4': 'Vaults',
-            '5': 'Staking'
-        };
-
-        const mappedType = typeMap[normalizedType];
-        if (!mappedType) {
-            console.log(`Неизвестный тип инвестиции: "${cleanType}"`);
-        }
-        return mappedType || 'Unknown';
-    };
-
     return (
         <div className="w-full space-y-6 pb-24 overflow-y-auto h-screen">
             <div className="flex justify-between items-start">
                 <div>
-                    <h1 className="text-2xl font-bold mb-3">Investment Ideas</h1>
+                    <h1 className="text-2xl font-bold mb-3">Tokens</h1>
                     <div className="flex items-center space-x-2">
                         <label htmlFor="network-filter" className="text-sm font-medium text-gray-700">
                             Network:
@@ -173,8 +154,8 @@ export default function InvestmentIdeasApi({ apiKey }: InvestmentIdeasApiProps) 
                 <button
                     onClick={() => {
                         setIsRefreshing(true);
-                        setProducts([]);
-                        fetchProducts(selectedNetwork);
+                        setTokens([]);
+                        fetchTokens(selectedNetwork);
                     }}
                     disabled={loading}
                     className={`p-1.5 rounded transition-colors ${
@@ -182,7 +163,7 @@ export default function InvestmentIdeasApi({ apiKey }: InvestmentIdeasApiProps) 
                             ? 'bg-gray-300 text-gray-500 cursor-not-allowed' 
                             : 'bg-blue-500 text-white hover:bg-blue-600'
                     }`}
-                    title="Refresh investment ideas"
+                    title="Refresh tokens"
                 >
                     <svg 
                         className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} 
@@ -214,112 +195,44 @@ export default function InvestmentIdeasApi({ apiKey }: InvestmentIdeasApiProps) 
                         <table className="min-w-full divide-y divide-gray-200">
                             <thead className="bg-gray-50 sticky top-0 z-10">
                                 <tr className="bg-gray-50">
+                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider relative">Token</th>
                                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider relative">Network</th>
-                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider relative">Name</th>
-                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider relative">Platform</th>
-                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider relative">Type</th>
-                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider relative">APR</th>
-                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider relative">APY</th>
-                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider relative">TVL</th>
-                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider relative">Tokens</th>
+                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider relative">Decimals</th>
+                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider relative">Address</th>
                                 </tr>
                             </thead>
                             <tbody className="bg-white divide-y divide-gray-200 relative">
-                                {products.map((product, index) => (
+                                {tokens.map((token, index) => (
                                     <tr key={index} className="hover:bg-gray-50">
                                         <td className="px-6 py-4 text-sm text-gray-900">
                                             <div className="flex items-center space-x-2">
                                                 <div className="w-6 h-6 relative">
                                                     <Image
-                                                        src={getNetworkIcon(product.network)}
-                                                        alt={product.network}
+                                                        src={getTokenIcon(token)}
+                                                        alt={token.token_symbol}
                                                         width={24}
                                                         height={24}
                                                         className="rounded-full"
+                                                        onError={() => handleImageError(token.token_symbol)}
                                                         unoptimized
                                                     />
                                                 </div>
-                                                <span>{product.network}</span>
+                                                <span>{token.token_symbol}</span>
                                             </div>
                                         </td>
                                         <td className="px-6 py-4 text-sm text-gray-900">
-                                            <div className="flex items-center space-x-2">
-                                                <div className="w-6 h-6 relative">
-                                                    <Image
-                                                        src={product.token_logo || defaultIcon}
-                                                        alt={product.token_symbol}
-                                                        width={24}
-                                                        height={24}
-                                                        className="rounded-full"
-                                                        onError={() => handleImageError(product.token_symbol)}
-                                                        unoptimized
-                                                    />
-                                                </div>
-                                                <span>{product.token_symbol}</span>
-                                            </div>
+                                            {token.network}
                                         </td>
                                         <td className="px-6 py-4 text-sm text-gray-900">
-                                            <div className="flex items-center space-x-2">
-                                                <div className="w-6 h-6 relative">
-                                                    <Image
-                                                        src={product.platform_logo || defaultProtocolIcon}
-                                                        alt={product.platform_name}
-                                                        width={24}
-                                                        height={24}
-                                                        className="rounded-full"
-                                                        onError={(e) => {
-                                                            const target = e.target as HTMLImageElement;
-                                                            target.src = defaultProtocolIcon;
-                                                        }}
-                                                        unoptimized
-                                                    />
-                                                </div>
-                                                {product.platform_url ? (
-                                                    <a
-                                                        href={product.platform_url}
-                                                        target="_blank"
-                                                        rel="noopener noreferrer"
-                                                        className="text-blue-600 hover:text-blue-800 hover:underline flex items-center"
-                                                    >
-                                                        {product.platform_name}
-														<svg 
-															className="w-4 h-4 ml-1" 
-															fill="none" 
-															stroke="currentColor" 
-															viewBox="0 0 24 24"
-														>
-															<path 
-																strokeLinecap="round" 
-																strokeLinejoin="round" 
-																strokeWidth={2} 
-																d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" 
-															/>
-														</svg>
-                                                    </a>
-                                                ) : (
-                                                    <span>{product.platform_name}</span>
-                                                )}
-                                            </div>
+                                            {token.token_decimal}
                                         </td>
-                                        <td className="px-6 py-4 text-sm text-gray-900">
-											{(() => {
-                                                return getInvestmentType(product.invest_type);
-                                            })()}
-                                        </td>
-                                        <td className="px-6 py-4 text-sm text-gray-900">
-                                            {product.rate_type === '1' ? (parseFloat(String(product.rate)) * 100).toFixed(2) + '%' : ''}
-                                        </td>
-                                        <td className="px-6 py-4 text-sm text-gray-900">
-                                            {product.rate_type === '0' ? (parseFloat(String(product.rate)) * 100).toFixed(2) + '%' : ''}
-                                        </td>
-                                        <td className="px-6 py-4 text-sm text-gray-900">{formatTVL(product.tvl)}</td>
                                         <td className="px-6 py-4 text-sm text-gray-900">
                                             <div className="flex items-center space-x-2">
                                                 <span className="truncate">
-                                                    {shortenAddress(product.token_address)}
+                                                    {shortenAddress(token.token_address)}
                                                 </span>
                                                 <button
-                                                    onClick={() => copyToClipboard(product.token_address)}
+                                                    onClick={() => copyToClipboard(token.token_address)}
                                                     className="text-gray-500 hover:text-gray-700 focus:outline-none"
                                                     title="Copy address"
                                                 >
@@ -346,14 +259,14 @@ export default function InvestmentIdeasApi({ apiKey }: InvestmentIdeasApiProps) 
                     </div>
                 </div>
             )}
-            
+
             <div className="mt-8 grid grid-cols-2 gap-8">
                 {/* Example Request */}
                 <div className="bg-gray-50 p-6 rounded-lg">
                     <div className="flex justify-between items-center mb-4">
                         <h3 className="text-lg font-semibold">Example Request</h3>
                         <button
-                            onClick={() => copyToClipboard(`curl -X GET "https://app.finkeeper.pro/ideasapi/datas/products?id=*********&network=eth&token=eth" \\
+                            onClick={() => copyToClipboard(`curl -X GET "https://app.finkeeper.pro/ideasapi/datas/tokens?id=*********&network=eth&token=eth" \\
   -H "Content-Type: application/json"`)}
                             className="text-gray-500 hover:text-gray-700 focus:outline-none"
                             title="Copy request"
@@ -374,7 +287,7 @@ export default function InvestmentIdeasApi({ apiKey }: InvestmentIdeasApiProps) 
                         </button>
                     </div>
                     <pre className="bg-gray-100 text-gray-800 p-4 rounded overflow-x-auto">
-                        <code>{`curl -X GET "https://app.finkeeper.pro/ideasapi/datas/products?id=*********&network=eth&token=eth" \\
+                        <code>{`curl -X GET "https://app.finkeeper.pro/ideasapi/datas/tokens?id=*********&network=eth&token=eth" \\
   -H "Content-Type: application/json"`}</code>
                     </pre>
                 </div>
@@ -384,29 +297,17 @@ export default function InvestmentIdeasApi({ apiKey }: InvestmentIdeasApiProps) 
                     <h3 className="text-lg font-semibold mb-4">Example Response</h3>
                     <pre className="bg-gray-100 text-gray-800 p-4 rounded overflow-x-auto">
                         <code>{`{
-  "timestamp": "2025-06-03T14:10:04.000Z",
-  "totalCount": 274,
-  "networks": [
+  "timestamp": "2025-06-03T14:44:25.000Z",
+  "totalCount": 6083,
+  "tokens": [
     {
-      "investment_id": 1,
-      "investment_name": "USDC",
-      "chain_id": "1",
+      "token_id": 1,
+      "token_symbol": "ETH",
       "network": "ETH",
-      "rate": "0.02561",
-      "invest_type": "1",
-      "platform_name": "Compound",
-      "platform_id": 1,
-      "platform_url": "https://app.compound.finance",
-      "platform_logo": "https://static.coinall.ltd/cdn/web3/protocol/logo/compound-none.png",
-      "pool_version": "1",
-      "rate_type": "0",
-      "tvl": "33559261",
-      "token_address": "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48",
-      "token_symbol": "USDC",
-      "token_id": "193",
-      "token_logo": "https://static.coinall.ltd/cdn/wallet/logo/USDC.png",
-      "token_decimal": "6",
-      "updated_at": "2025-06-03 17:00:14"
+      "logo_url": "https://static.coinall.ltd/cdn/wallet/logo/ETH-20220328.png",
+      "token_address": "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+      "token_decimal": 18,
+      "updated_at": "2025-06-03 01:00:24"
     }
   ]
 }`}</code>

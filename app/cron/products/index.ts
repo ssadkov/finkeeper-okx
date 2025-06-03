@@ -2,7 +2,7 @@ import { fetchProducts } from './api';
 import { enrichProductWithTokenInfo } from './storage';
 import { 
     Product, 
-    EnrichedProduct,
+    EnrichedProduct, 
     UpdateProductsResult 
 } from './types';
 import pool from '@/app/config/database';
@@ -211,7 +211,7 @@ export async function updateProducts(): Promise<UpdateProductsResult> {
                         });
                         continue;
                     }
-
+                    
                     const enriched = await enrichProductWithTokenInfo(product);
                     
                     if (enriched.tokenId) {
@@ -225,9 +225,9 @@ export async function updateProducts(): Promise<UpdateProductsResult> {
                     if (result && result.rowCount > 0) {
                         if (result.rows[0].created_at === result.rows[0].updated_at) {
                             totalSaved++;
-                        } else {
+                    } else {
                             totalUpdated++;
-                        }
+                    }
                     }
 
                     await sleep(10);

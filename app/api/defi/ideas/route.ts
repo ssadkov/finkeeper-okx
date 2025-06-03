@@ -55,14 +55,14 @@ export async function GET() {
                 invest_type: row.invest_type
             }));
 
-            // Логируем первый элемент для проверки
+        // Логируем первый элемент для проверки
             if (ideas.length > 0) {
-                console.log('Sample idea:', {
+            console.log('Sample idea:', {
                     platform_name: ideas[0].platform_name,
                     platform_logo: ideas[0].platform_logo,
                     platform_url: ideas[0].platform_url
-                });
-            }
+            });
+        }
 
             return NextResponse.json({ ideas });
         } finally {

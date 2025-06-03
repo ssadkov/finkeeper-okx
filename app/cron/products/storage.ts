@@ -88,16 +88,16 @@ export async function getTokenInfo(tokenAddress: string, network: string): Promi
         }
 
         const tokenInfo = rows[0];
-        console.log(`Found token info:`, {
+                console.log(`Found token info:`, {
             tokenId: tokenInfo.token_id,
             tokenAddress: tokenAddress
-        });
+                });
 
-        return {
+                return {
             tokenId: tokenInfo.token_id,
             logoUrl: tokenInfo.logo_url,
             tokenDecimal: tokenInfo.token_decimal
-        };
+                };
     } catch (error) {
         console.error('Error getting token info from database:', error);
         return null;
@@ -130,17 +130,17 @@ export async function getProtocolInfo(platformId: number): Promise<{
         }
 
         const protocol = rows[0];
-        console.log(`Found protocol info:`, {
+            console.log(`Found protocol info:`, {
             platformId: protocol.platform_id,
             platformName: protocol.platform_name,
-            hasLogo: !!protocol.logo,
+                hasLogo: !!protocol.logo,
             hasWebsite: !!protocol.platform_website
-        });
+            });
 
-        return {
-            logo: protocol.logo,
+            return {
+                logo: protocol.logo,
             platformWebSite: protocol.platform_website
-        };
+            };
     } catch (error) {
         console.error('Error getting protocol info:', error);
         return null;
