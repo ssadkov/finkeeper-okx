@@ -6,6 +6,7 @@ import { WalletProvider } from './context/WalletContext';
 import { WalletProvider as CustomWalletProvider } from './components/WalletProvider';
 import { OkxProvider } from './context/OkxContext';
 import TopPanel from './components/TopPanel';
+import { Analytics } from "@vercel/analytics/react";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -43,6 +44,7 @@ export default function RootLayout({
             </OkxProvider>
           </CustomWalletProvider>
         </WalletProvider>
+        <Analytics />
       </body>
     </html>
   );

@@ -24,6 +24,7 @@
     "@solana/wallet-adapter-wallets": "^0.19.36",
     "@solana/web3.js": "^1.92.3",
     "@types/pg": "^8.15.2",
+    "@vercel/analytics": "^1.5.0",
     "assert": "^2.1.0",
     "bignumber.js": "^9.3.0",
     "bn.js": "^5.2.2",
