@@ -69,7 +69,7 @@ export default function TokensApi({ apiKey }: TokensApiProps) {
             }
 
             let urlString = `https://app.finkeeper.pro/ideasapi/datas/tokens?id=${apiKey}`;
-            if (network && network !== 'ALL') {
+            if (network) {
                 urlString += `&network=${network.toLowerCase()}`;
             }
 
@@ -145,7 +145,7 @@ export default function TokensApi({ apiKey }: TokensApiProps) {
                         >
                             {AVAILABLE_NETWORKS.map(network => (
                                 <option key={network} value={network}>
-                                    {network === 'ALL' ? 'All Networks' : network}
+                                    {network}
                                 </option>
                             ))}
                         </select>
