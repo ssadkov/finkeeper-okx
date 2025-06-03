@@ -63,9 +63,9 @@ export default function InvestmentIdeasApi({ apiKey }: InvestmentIdeasApiProps) 
         setError(null);
         
         try {
-            const response = await fetch(`/api/ideasapi/products/${apiKey}`);
+            const response = await fetch(`https://app.finkeeper.pro/ideasapi/datas/products?id=${apiKey}`);
             const data = await response.json();
-            
+
             if (data.error) {
                 throw new Error(data.error);
             }
